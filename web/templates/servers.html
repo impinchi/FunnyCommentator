@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Servers - FunnyCommentator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-hdd-stack"></i> Server Configuration
+            </h1>
+            <a href="{{ url_for('add_server') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Server
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if config and config.servers %}
+    <div class="row">
+        {% for server_name, server in config.servers.items() %}
+            <div class="col-lg-6 col-xl-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ server.name }}</h5>
+                        <span class="badge {{ 'bg-success' if server.is_pve else 'bg-warning' }}">
+                            {{ 'PvE' if server.is_pve else 'PvP' }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">
+                            <strong>Map:</strong> {{ server.map_name }}<br>
+                            <strong>Host:</strong> {{ server.rcon_host }}:{{ server.rcon_port }}<br>
+                            <strong>Max Dino Level:</strong> {{ server.max_wild_dino_level }}<br>
+                            <strong>Tribe:</strong> {{ server.tribe_name }}
+                        </p>
+                        
+                        <h6>Players:</h6>
+                        <div class="mb-3">
+                            {% for player in server.player_names %}
+                                <span class="badge bg-secondary text-light me-1">{{ player }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="btn-group w-100" role="group">
+                            <a href="{{ url_for('edit_server', server_name=server.name) }}" 
+                               class="btn btn-primary btn-sm">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <button type="button" 
+                                    class="btn btn-danger btn-sm"
+                                    onclick="confirmDelete('{{ server.name }}')">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <div class="display-1 text-muted mb-3">
+                        <i class="bi bi-hdd-stack"></i>
+                    </div>
+                    <h3>No Servers Configured</h3>
+                    <p class="text-muted mb-4">Get started by adding your first ARK server configuration.</p>
+                    <a href="{{ url_for('add_server') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-plus-circle"></i> Add Your First Server
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Clusters Information -->
+{% if config and config.clusters %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <h2>
+                <i class="bi bi-diagram-3"></i> Server Clusters
+            </h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% for cluster_name, cluster_info in config.clusters.items() %}
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">{{ cluster_name }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Servers in cluster:</strong></p>
+                        <ul>
+                            {% for server_name in cluster_info.servers %}
+                                <li>{{ server_name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the server "<span id="serverName"></span>"?</p>
+                <p class="text-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete Server</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function confirmDelete(serverName) {
+    document.getElementById('serverName').textContent = serverName;
+    document.getElementById('deleteForm').action = '/servers/delete/' + encodeURIComponent(serverName);
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

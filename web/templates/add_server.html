@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Add Server - FunnyCommentator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-plus-circle"></i> Add New Server
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Server Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Server Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                   placeholder="e.g., My ARK Server">
+                            <div class="form-text">Unique name for this server</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="map_name" class="form-label">Map Name *</label>
+                            <select class="form-select" id="map_name" name="map_name" required>
+                                <option value="">Select a map...</option>
+                                <option value="The Island">The Island</option>
+                                <option value="The Center">The Center</option>
+                                <option value="Scorched Earth">Scorched Earth</option>
+                                <option value="Ragnarok">Ragnarok</option>
+                                <option value="Aberration">Aberration</option>
+                                <option value="Extinction">Extinction</option>
+                                <option value="Valguero">Valguero</option>
+                                <option value="Genesis: Part 1">Genesis: Part 1</option>
+                                <option value="Crystal Isles">Crystal Isles</option>
+                                <option value="Genesis: Part 2">Genesis: Part 2</option>
+                                <option value="The Lost Island">The Lost Island</option>
+                                <option value="Fjordur">Fjordur</option>
+                                <option value="Genesis: Ascended">Genesis: Ascended</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Cluster Selection -->
+                    <div class="mb-3">
+                        <label for="cluster" class="form-label">Cluster Assignment (Optional)</label>
+                        <select class="form-select" id="cluster" name="cluster">
+                            <option value="">Select a cluster...</option>
+                            {% if clusters %}
+                                {% for cluster_name, cluster in clusters.items() %}
+                                    <option value="{{ cluster_name }}" data-host="{{ cluster.host }}">
+                                        {{ cluster_name }} ({{ cluster.host }})
+                                    </option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        <div class="form-text">
+                            Select a cluster to auto-populate host settings. 
+                            <a href="{{ url_for('add_cluster') }}" target="_blank">Create new cluster</a>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="rcon_host" class="form-label">RCON Host</label>
+                            <input type="text" class="form-control" id="rcon_host" name="rcon_host" 
+                                   value="127.0.0.1" placeholder="127.0.0.1">
+                            <div class="form-text">IP address of the ARK server</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="rcon_port" class="form-label">RCON Port</label>
+                            <input type="number" class="form-control" id="rcon_port" name="rcon_port" 
+                                   value="27015" min="1" max="65535" placeholder="27015">
+                            <div class="form-text">RCON port number</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="log_file_path" class="form-label">Log File Path (Optional)</label>
+                        <input type="text" class="form-control" id="log_file_path" name="log_file_path" 
+                               placeholder="F:\asmdata\Servers\Server1\ShooterGame\Saved\Logs\ShooterGame.log">
+                        <div class="form-text">
+                            Path to ARK server log file for fallback when RCON fails. 
+                            <small class="text-muted">Example: F:\asmdata\Servers\YourServer\ShooterGame\Saved\Logs\ShooterGame.log</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="max_wild_dino_level" class="form-label">Max Wild Dino Level</label>
+                            <input type="number" class="form-control" id="max_wild_dino_level" 
+                                   name="max_wild_dino_level" value="150" min="1" max="1000" placeholder="150">
+                            <div class="form-text">Maximum level for wild dinosaurs</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="tribe_name" class="form-label">Tribe Name</label>
+                            <input type="text" class="form-control" id="tribe_name" name="tribe_name" 
+                                   placeholder="e.g., Alpha Tribe">
+                            <div class="form-text">Main tribe name on this server</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="player_names" class="form-label">Player Names</label>
+                        <input type="text" class="form-control" id="player_names" name="player_names" 
+                               placeholder="Player1, Player2, Player3">
+                        <div class="form-text">Comma-separated list of player names</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_pve" name="is_pve">
+                            <label class="form-check-label" for="is_pve">
+                                PvE Server
+                            </label>
+                            <div class="form-text">Check if this is a PvE (Player vs Environment) server</div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Add Server
+                        </button>
+                        <a href="{{ url_for('servers') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>RCON Configuration</h6>
+                <p class="small">
+                    Make sure RCON is enabled on your ARK server. Add these lines to your 
+                    server configuration:
+                </p>
+                <pre class="bg-light p-2 small"><code>RCONEnabled=True
+RCONPort=27015
+ServerAdminPassword=YourRCONPassword</code></pre>
+                
+                <h6 class="mt-3">Security Note</h6>
+                <p class="small text-muted">
+                    <i class="bi bi-shield-lock"></i>
+                    RCON passwords are stored securely in your system's credential store.
+                    You'll set the password separately in the Credentials section.
+                </p>
+                
+                <h6 class="mt-3">Player Names</h6>
+                <p class="small text-muted">
+                    Enter the in-game names of players you want the AI to recognize.
+                    These will be used for personalized commentary.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Form validation and helper functions
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const nameInput = document.getElementById('name');
+    
+    // Auto-populate host when cluster is selected
+    const clusterSelect = document.getElementById('cluster');
+    const hostInput = document.getElementById('rcon_host');
+    
+    if (clusterSelect && hostInput) {
+        clusterSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value && selectedOption.dataset.host) {
+                hostInput.value = selectedOption.dataset.host;
+                // Add visual feedback
+                hostInput.style.backgroundColor = 'rgba(0, 255, 65, 0.1)';
+                setTimeout(() => {
+                    hostInput.style.backgroundColor = '';
+                }, 1000);
+            }
+        });
+    }
+    
+    // Add real-time validation feedback
+    nameInput.addEventListener('input', function() {
+        if (this.value.trim().length < 3) {
+            this.setCustomValidity('Server name must be at least 3 characters long');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    // Format player names on blur
+    const playerNamesInput = document.getElementById('player_names');
+    playerNamesInput.addEventListener('blur', function() {
+        if (this.value) {
+            // Clean up the comma-separated list
+            const names = this.value.split(',')
+                .map(name => name.trim())
+                .filter(name => name.length > 0);
+            this.value = names.join(', ');
+        }
+    });
+});
+</script>
+{% endblock %}

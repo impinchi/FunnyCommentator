@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}System Information - FunnyCommentator{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-info-circle"></i> Enterprise System Information</h1>
+                <button class="btn btn-outline-primary" onclick="validateSystem()">
+                    <i class="bi bi-shield-check"></i> Validate System
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-laptop"></i> Platform Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-dark table-sm">
+                                <tr>
+                                    <td><strong>Platform:</strong></td>
+                                    <td><span class="badge bg-primary">{{ status.platform_support.platform|title }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>User:</strong></td>
+                                    <td>{{ status.system_info.user if status.system_info else 'Unknown' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Python Version:</strong></td>
+                                    <td><code>{{ status.system_info.python_version.split()[0] if status.system_info else 'Unknown' }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Enterprise Mode:</strong></td>
+                                    <td>
+                                        {% if status.platform_support.enterprise_features %}
+                                            <span class="badge bg-primary"><i class="bi bi-check-circle"></i> Enabled</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary"><i class="bi bi-gear"></i> Standard</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-dark table-sm">
+                                <tr>
+                                    <td><strong>Service Name:</strong></td>
+                                    <td><code>{{ status.system_info.service_name if status.system_info else 'Unknown' }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Keyring Backend:</strong></td>
+                                    <td><code>{{ status.platform_support.keyring_backend.split('.')[-1] if status.platform_support.keyring_backend else 'Unknown' }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fallback Available:</strong></td>
+                                    <td>
+                                        {% if status.platform_support.fallback_available %}
+                                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Available</span>
+                                        {% else %}
+                                            <span class="badge bg-warning"><i class="bi bi-exclamation-triangle"></i> Unavailable</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Updated:</strong></td>
+                                    <td>{{ status.last_updated }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backend Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Security Backend Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Primary Keyring</h6>
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    {% if status.backend_validation.keyring_available %}
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        <span>Keyring Available</span>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-danger me-2"></i>
+                                        <span>Keyring Unavailable</span>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    {% if status.backend_validation.keyring_read_write %}
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        <span>Read/Write Access</span>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-danger me-2"></i>
+                                        <span>No Read/Write Access</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Fallback Storage</h6>
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    {% if status.backend_validation.fallback_available %}
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        <span>Fallback Available</span>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-warning me-2"></i>
+                                        <span>Fallback Unavailable</span>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    {% if status.backend_validation.fallback_read_write %}
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        <span>Encryption Working</span>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-warning me-2"></i>
+                                        <span>Encryption Not Tested</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Overall Security Status -->
+                    <div class="alert {% if status.backend_validation.keyring_read_write %}alert-success{% elif status.backend_validation.fallback_read_write %}alert-warning{% else %}alert-danger{% endif %}" role="alert">
+                        <i class="bi bi-shield-{% if status.backend_validation.keyring_read_write %}check{% elif status.backend_validation.fallback_read_write %}exclamation{% else %}x{% endif %}"></i>
+                        <strong>Security Status:</strong>
+                        {% if status.backend_validation.keyring_read_write %}
+                            Optimal - Using native OS keyring for maximum security
+                        {% elif status.backend_validation.fallback_read_write %}
+                            Good - Using encrypted fallback storage (consider keyring setup)
+                        {% else %}
+                            Critical - No secure credential storage available
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credential Summary -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-key"></i> Stored Credentials</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Total Credentials:</span>
+                        <span class="badge bg-info fs-6">{{ status.stored_credentials_count if status.stored_credentials_count is not none else 'Unknown' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Discord Token:</span>
+                        {% if status.discord_configured %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Configured</span>
+                        {% else %}
+                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Missing</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Server Passwords:</span>
+                        <span class="badge bg-secondary">{{ (status.stored_credentials_count or 1) - 1 }} servers</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-graph-up"></i> System Resources</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Configured Servers:</span>
+                        <span class="badge bg-primary fs-6">{{ status.servers_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Server Clusters:</span>
+                        <span class="badge bg-primary fs-6">{{ status.clusters_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>AI Model:</span>
+                        <code>{{ status.ai_model }}</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Recommendations -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Security Recommendations</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Best Practices</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check text-success"></i> Use native OS keyring when available</li>
+                                <li><i class="bi bi-check text-success"></i> Enable enterprise mode for audit logging</li>
+                                <li><i class="bi bi-check text-success"></i> Regular credential rotation</li>
+                                <li><i class="bi bi-check text-success"></i> Monitor access logs</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Platform-Specific</h6>
+                            {% if status.platform_support.platform == 'windows' %}
+                                <p><strong>Windows:</strong> Credentials stored in Windows Credential Manager</p>
+                                <p><small class="text-muted">Access via Control Panel → User Accounts → Credential Manager</small></p>
+                            {% elif status.platform_support.platform == 'darwin' %}
+                                <p><strong>macOS:</strong> Credentials stored in Keychain Access</p>
+                                <p><small class="text-muted">Access via Applications → Utilities → Keychain Access</small></p>
+                            {% elif status.platform_support.platform == 'linux' %}
+                                <p><strong>Linux:</strong> Using Secret Service API</p>
+                                <p><small class="text-muted">GNOME Keyring, KDE Wallet, or similar</small></p>
+                            {% else %}
+                                <p><strong>Unknown Platform:</strong> Using fallback encryption</p>
+                                <p><small class="text-muted">Encrypted file storage recommended</small></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Validation Result Modal -->
+<div class="modal fade" id="validationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">System Validation Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="validationResults">
+                <!-- Results will be populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function validateSystem() {
+    try {
+        const response = await fetch('/api/system/validate');
+        const data = await response.json();
+        
+        let resultsHtml = '';
+        if (data.success) {
+            resultsHtml = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> Validation completed successfully at ${new Date(data.timestamp).toLocaleString()}
+                </div>
+                <h6>Backend Status:</h6>
+                <ul class="list-unstyled">
+            `;
+            
+            for (const [backend, status] of Object.entries(data.validation)) {
+                const icon = status ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger';
+                const statusText = status ? 'Working' : 'Failed';
+                resultsHtml += `<li><i class="bi ${icon}"></i> ${backend}: ${statusText}</li>`;
+            }
+            resultsHtml += '</ul>';
+        } else {
+            resultsHtml = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Validation failed: ${data.error}
+                </div>
+            `;
+        }
+        
+        document.getElementById('validationResults').innerHTML = resultsHtml;
+        new bootstrap.Modal(document.getElementById('validationModal')).show();
+        
+        // Refresh page after a delay to update status
+        setTimeout(() => location.reload(), 2000);
+        
+    } catch (error) {
+        document.getElementById('validationResults').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error performing validation: ${error.message}
+            </div>
+        `;
+        new bootstrap.Modal(document.getElementById('validationModal')).show();
+    }
+}
+</script>
+{% endblock %}

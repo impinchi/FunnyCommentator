@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}AI Configuration - FunnyCommentator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-cpu"></i> AI Configuration
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Ollama AI Settings</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('update_ai_config') }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="ollama_url" class="form-label">Ollama API URL *</label>
+                            <input type="url" class="form-control" id="ollama_url" name="ollama_url" 
+                                   value="{{ config.ollama_url if config else 'http://localhost:11434/api/generate' }}" 
+                                   required placeholder="http://localhost:11434/api/generate">
+                            <div class="form-text">URL to the Ollama API endpoint</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="ollama_model" class="form-label">AI Model *</label>
+                            <input type="text" class="form-control" id="ollama_model" name="ollama_model" 
+                                   value="{{ config.ollama_model if config else 'llama2' }}" 
+                                   required placeholder="llama2">
+                            <div class="form-text">Name of the Ollama model to use</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="ollama_start_cmd" class="form-label">Ollama Start Command</label>
+                        <input type="text" class="form-control" id="ollama_start_cmd" name="ollama_start_cmd" 
+                               value="{{ config.ollama_start_cmd if config else 'ollama serve' }}" 
+                               placeholder="ollama serve">
+                        <div class="form-text">Command to start the Ollama server</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="timeout_seconds" class="form-label">Request Timeout (seconds)</label>
+                            <input type="number" class="form-control" id="timeout_seconds" name="timeout_seconds" 
+                                   value="{{ config.ai_timeout_seconds if config else 300 }}" 
+                                   min="30" max="3600" placeholder="300">
+                            <div class="form-text">Timeout for AI requests</div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="startup_timeout_seconds" class="form-label">Startup Timeout (seconds)</label>
+                            <input type="number" class="form-control" id="startup_timeout_seconds" name="startup_timeout_seconds" 
+                                   value="{{ config.ollama_startup_timeout if config else 300 }}" 
+                                   min="60" max="1800" placeholder="300">
+                            <div class="form-text">Time to wait for server startup</div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="input_token_size" class="form-label">Token Limit</label>
+                            <input type="number" class="form-control" id="input_token_size" name="input_token_size" 
+                                   value="{{ config.input_token_size if config else 16000 }}" 
+                                   min="1000" max="100000" placeholder="16000">
+                            <div class="form-text">Maximum input tokens</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="ai_tone" class="form-label">AI Personality & Tone *</label>
+                        <textarea class="form-control" id="ai_tone" name="ai_tone" rows="4" 
+                                  placeholder="You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes." 
+                                  required>{{ config.ai_tone if config else 'You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes.' }}</textarea>
+                        <div class="form-text">
+                            Define how the AI should respond. This text is added to the end of every prompt to set the tone and personality.
+                            <br><strong>Examples:</strong> "Be funny and witty", "Be insulting about mistakes", "Be helpful and professional", "Be dramatic and over-the-top"
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Update AI Configuration
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="testConnection()">
+                            <i class="bi bi-wifi"></i> Test Connection
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> AI Configuration Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>Ollama Setup</h6>
+                <p class="small">
+                    Make sure Ollama is installed and running on your system. 
+                    Download it from <a href="https://ollama.ai" target="_blank">ollama.ai</a>.
+                </p>
+                
+                <h6 class="mt-3">Popular Models</h6>
+                <ul class="small">
+                    <li><code>llama2</code> - General purpose model</li>
+                    <li><code>codellama</code> - Code-focused model</li>
+                    <li><code>mistral</code> - Fast and efficient</li>
+                    <li><code>deepseek-r1:70b</code> - Large, high-quality model</li>
+                </ul>
+                
+                <h6 class="mt-3">Performance Tips</h6>
+                <ul class="small">
+                    <li>Use smaller models for faster responses</li>
+                    <li>Increase timeout for complex requests</li>
+                    <li>Monitor token usage to avoid limits</li>
+                    <li>Test connection before saving</li>
+                </ul>
+                
+                <h6 class="mt-3">AI Tone Examples</h6>
+                <ul class="small">
+                    <li><strong>Sarcastic:</strong> "Be sarcastic and witty about player mistakes"</li>
+                    <li><strong>Professional:</strong> "Be helpful and informative in a professional manner"</li>
+                    <li><strong>Dramatic:</strong> "Be over-the-top and theatrical in your responses"</li>
+                    <li><strong>Insulting:</strong> "Be brutally honest and insulting about poor gameplay"</li>
+                </ul>
+                
+                <div class="alert alert-warning mt-3">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-exclamation-triangle"></i> Resource Usage
+                    </h6>
+                    <p class="small mb-0">
+                        Large models require significant RAM and processing power. 
+                        Make sure your system can handle the selected model.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        {% if config %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-gear"></i> Current Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 small">Model:</dt>
+                    <dd class="col-sm-8 small">{{ config.ollama_model }}</dd>
+                    
+                    <dt class="col-sm-4 small">URL:</dt>
+                    <dd class="col-sm-8 small text-truncate">{{ config.ollama_url }}</dd>
+                    
+                    <dt class="col-sm-4 small">Timeout:</dt>
+                    <dd class="col-sm-8 small">{{ config.ai_timeout_seconds }}s</dd>
+                    
+                    <dt class="col-sm-4 small">Tokens:</dt>
+                    <dd class="col-sm-8 small">{{ config.input_token_size }}</dd>
+                    
+                    <dt class="col-sm-4 small">AI Tone:</dt>
+                    <dd class="col-sm-8 small">{{ config.ai_tone[:50] }}{{ '...' if config.ai_tone|length > 50 else '' }}</dd>
+                </dl>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function testConnection() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    FunnyCommentator.showButtonLoading(button, 'Testing...');
+    
+    // Get form values
+    const url = document.getElementById('ollama_url').value;
+    const model = document.getElementById('ollama_model').value;
+    
+    // Simulate connection test (in a real implementation, this would make an actual API call)
+    setTimeout(() => {
+        FunnyCommentator.hideButtonLoading(button, originalText);
+        
+        // For demo purposes, randomly succeed or fail
+        if (Math.random() > 0.3) {
+            FunnyCommentator.showToast('Connection test successful!', 'success');
+        } else {
+            FunnyCommentator.showToast('Connection test failed. Check your settings.', 'error');
+        }
+    }, 2000);
+}
+
+// Form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const urlInput = document.getElementById('ollama_url');
+    const modelInput = document.getElementById('ollama_model');
+    const toneInput = document.getElementById('ai_tone');
+    
+    // Validate URL format
+    urlInput.addEventListener('input', function() {
+        const url = this.value;
+        if (url && !url.match(/^https?:\/\/.+/)) {
+            this.setCustomValidity('Please enter a valid HTTP or HTTPS URL');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    // Validate model name
+    modelInput.addEventListener('input', function() {
+        const model = this.value;
+        if (model && model.length < 2) {
+            this.setCustomValidity('Model name must be at least 2 characters');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    // Add preset tone options
+    const presetTones = [
+        {
+            name: "Sarcastic & Witty (Default)",
+            value: "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes."
+        },
+        {
+            name: "Professional & Helpful", 
+            value: "Be helpful, informative, and professional in your responses. Provide constructive feedback and guidance."
+        },
+        {
+            name: "Dramatic & Theatrical",
+            value: "Be over-the-top, dramatic, and theatrical in your responses. Make everything sound epic and important."
+        },
+        {
+            name: "Brutally Honest",
+            value: "Be brutally honest and direct about player performance. Don't sugarcoat mistakes or poor decisions."
+        },
+        {
+            name: "Encouraging & Supportive",
+            value: "Be encouraging, supportive, and positive. Help players learn from their experiences with kindness."
+        }
+    ];
+    
+    // Create preset buttons
+    const presetContainer = document.createElement('div');
+    presetContainer.className = 'mt-2';
+    presetContainer.innerHTML = '<small class="text-muted">Quick presets:</small><br>';
+    
+    presetTones.forEach(preset => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-outline-secondary btn-sm me-1 mb-1';
+        button.style.fontSize = '0.75rem';
+        button.textContent = preset.name;
+        button.onclick = () => {
+            toneInput.value = preset.value;
+            toneInput.focus();
+        };
+        presetContainer.appendChild(button);
+    });
+    
+    toneInput.parentNode.appendChild(presetContainer);
+});
+</script>
+{% endblock %}

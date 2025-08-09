@@ -1,0 +1,553 @@
+{% extends "base.html" %}
+
+{% block title %}Command Center - ARK FunnyCommentator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4" style="font-family: 'Orbitron', monospace; text-shadow: 0 0 20px var(--ark-glow);">
+            <i class="bi bi-lightning-charge"></i> ARK Command Center
+        </h1>
+        <p class="lead mb-4" style="color: var(--ark-primary);">
+            <i class="bi bi-compass"></i> Administrative control panel for your ARK: Survival Evolved servers
+        </p>
+    </div>
+</div>
+
+<!-- Server Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 text-primary mb-2">
+                    <i class="bi bi-hdd-network"></i>
+                </div>
+                <h5 class="card-title" style="font-family: 'Orbitron', monospace;">ARK Servers</h5>
+                <h2 class="text-primary">{{ status.servers_count }}</h2>
+                <p class="card-text text-muted">Active Worlds</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 text-success mb-2">
+                    <i class="bi bi-globe2"></i>
+                </div>
+                <h5 class="card-title" style="font-family: 'Orbitron', monospace;">Clusters</h5>
+                <h2 class="text-success">{{ status.clusters_count }}</h2>
+                <p class="card-text text-muted">Connected Maps</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 mb-2 {{ 'text-success' if status.discord_configured else 'text-warning' }}">
+                    <i class="bi bi-discord"></i>
+                </div>
+                <h5 class="card-title" style="font-family: 'Orbitron', monospace;">Discord</h5>
+                <p class="card-text">
+                    <span class="badge {{ 'bg-success' if status.discord_configured else 'bg-warning' }}">
+                        {{ 'Configured' if status.discord_configured else 'Not Configured' }}
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 text-info mb-2">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <h5 class="card-title" style="font-family: 'Orbitron', monospace;">AI Brain</h5>
+                <p class="card-text">
+                    <small class="text-muted">{{ status.ai_model }}</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Process Control Panel -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-cpu"></i> Application Process Control
+                    <div class="float-end">
+                        <span id="process-status-badge" class="badge bg-secondary">
+                            <i class="bi bi-hourglass-split"></i> Checking...
+                        </span>
+                    </div>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 mb-2">
+                                        <i id="process-status-icon" class="bi bi-question-circle text-muted"></i>
+                                    </div>
+                                    <h6>Status</h6>
+                                    <span id="process-status-text" class="badge bg-secondary">Unknown</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 mb-2">
+                                        <i class="bi bi-clock text-info"></i>
+                                    </div>
+                                    <h6>Uptime</h6>
+                                    <span id="process-uptime" class="badge bg-info">--</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 mb-2">
+                                        <i class="bi bi-cpu text-warning"></i>
+                                    </div>
+                                    <h6>CPU</h6>
+                                    <span id="process-cpu" class="badge bg-warning">--%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 mb-2">
+                                        <i class="bi bi-memory text-success"></i>
+                                    </div>
+                                    <h6>Memory</h6>
+                                    <span id="process-memory" class="badge bg-success">--%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                PID: <span id="process-pid">--</span> | 
+                                Last checked: <span id="process-last-check">--</span>
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="d-grid gap-2 process-control-buttons">
+                            <button id="btn-start" class="btn btn-success" onclick="startApplication()" disabled>
+                                <i class="bi bi-play-fill"></i> Start Application
+                            </button>
+                            <button id="btn-restart" class="btn btn-warning" onclick="restartApplication()" disabled>
+                                <i class="bi bi-arrow-clockwise"></i> Restart Application
+                            </button>
+                            <button id="btn-stop" class="btn btn-danger" onclick="stopApplication()" disabled>
+                                <i class="bi bi-stop-fill"></i> Stop Application
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="refreshProcessStatus()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh Status
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enterprise Security Status -->
+{% if status.platform_support %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-shield-check"></i> Enterprise Security Status
+                    <a href="{{ url_for('system_info') }}" class="btn btn-sm btn-outline-primary float-end">
+                        <i class="bi bi-info-circle"></i> Details
+                    </a>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-2">
+                                {% if status.platform_support.keyring_available %}
+                                    <i class="bi bi-shield-fill-check text-success"></i>
+                                {% else %}
+                                    <i class="bi bi-shield-fill-exclamation text-warning"></i>
+                                {% endif %}
+                            </div>
+                            <h6>Primary Security</h6>
+                            <span class="badge {{ 'bg-success' if status.platform_support.keyring_available else 'bg-warning' }}">
+                                {{ status.platform_support.platform|title }} 
+                                {{ 'Keyring' if status.platform_support.keyring_available else 'Unavailable' }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-2">
+                                {% if status.platform_support.fallback_available %}
+                                    <i class="bi bi-file-lock text-info"></i>
+                                {% else %}
+                                    <i class="bi bi-file-lock text-muted"></i>
+                                {% endif %}
+                            </div>
+                            <h6>Fallback Storage</h6>
+                            <span class="badge {{ 'bg-info' if status.platform_support.fallback_available else 'bg-secondary' }}">
+                                {{ 'Available' if status.platform_support.fallback_available else 'Disabled' }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-2">
+                                {% if status.platform_support.enterprise_features %}
+                                    <i class="bi bi-building text-primary"></i>
+                                {% else %}
+                                    <i class="bi bi-building text-muted"></i>
+                                {% endif %}
+                            </div>
+                            <h6>Enterprise Mode</h6>
+                            <span class="badge {{ 'bg-primary' if status.platform_support.enterprise_features else 'bg-secondary' }}">
+                                {{ 'Enabled' if status.platform_support.enterprise_features else 'Standard' }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-2">
+                                <i class="bi bi-key-fill text-success"></i>
+                            </div>
+                            <h6>Stored Credentials</h6>
+                            <span class="badge bg-success">{{ status.stored_credentials_count or 0 }} items</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if status.backend_validation %}
+                <div class="mt-3">
+                    <div class="progress" style="height: 8px;">
+                        {% set security_score = 0 %}
+                        {% if status.backend_validation.keyring_read_write %}
+                            {% set security_score = 100 %}
+                        {% elif status.backend_validation.fallback_read_write %}
+                            {% set security_score = 75 %}
+                        {% elif status.backend_validation.keyring_available or status.backend_validation.fallback_available %}
+                            {% set security_score = 50 %}
+                        {% else %}
+                            {% set security_score = 25 %}
+                        {% endif %}
+                        
+                        <div class="progress-bar 
+                            {% if security_score >= 90 %}bg-success
+                            {% elif security_score >= 70 %}bg-info
+                            {% elif security_score >= 50 %}bg-warning
+                            {% else %}bg-danger{% endif %}" 
+                            style="width: {{ security_score }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">Security Score: {{ security_score }}%</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Configuration Overview -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0" style="font-family: 'Orbitron', monospace;">
+                    <i class="bi bi-globe2"></i> ARK World Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if config %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 style="color: var(--ark-primary); font-family: 'Exo 2', sans-serif;"><i class="bi bi-map"></i> Active Worlds</h6>
+                            <ul class="list-unstyled">
+                                {% for server_name, server in config.servers.items() %}
+                                    <li class="mb-3 p-2" style="background: rgba(0, 255, 65, 0.1); border-left: 3px solid var(--ark-primary); border-radius: 5px;">
+                                        <i class="bi bi-geo-alt-fill text-primary"></i>
+                                        <strong style="font-family: 'Exo 2', sans-serif;">{{ server.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="bi bi-compass"></i> {{ server.map_name }} | 
+                                            <i class="bi bi-people-fill"></i> Tribe: {{ server.tribe_name }} |
+                                            <span class="badge {{ 'bg-success' if server.is_pve else 'bg-danger' }}">
+                                                {{ 'PvE' if server.is_pve else 'PvP' }}
+                                            </span> |
+                                            <i class="bi bi-award"></i> Max Level: {{ server.max_wild_dino_level }}
+                                        </small>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 style="color: var(--ark-primary); font-family: 'Exo 2', sans-serif;"><i class="bi bi-gear-wide-connected"></i> System Configuration</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="bi bi-clock-history text-success"></i>
+                                    <strong>Auto-Schedule:</strong> {{ status.scheduler_time }}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-database text-info"></i>
+                                    <strong>Data Archive:</strong>
+                                    <br>
+                                    <small style="color: #c0c0c0;">{{ status.database_path }}</small>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-robot text-warning"></i>
+                                    <strong>AI Consciousness:</strong> <span style="color: #ffffff;">{{ status.ai_model }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        ARK configuration systems offline. Please initialize your admin terminal.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0" style="font-family: 'Orbitron', monospace;">
+                    <i class="bi bi-joystick"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('add_server') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Deploy New World
+                    </a>
+                    <a href="{{ url_for('credentials') }}" class="btn btn-warning">
+                        <i class="bi bi-shield-lock"></i> Security Protocols
+                    </a>
+                    <a href="{{ url_for('ai_config') }}" class="btn btn-info">
+                        <i class="bi bi-robot"></i> AI Consciousness
+                    </a>
+                    <a href="{{ url_for('scheduler_config') }}" class="btn btn-success">
+                        <i class="bi bi-clock-history"></i> Automation Schedule
+                    </a>
+                </div>
+                
+                <hr style="border-color: var(--ark-metal);">
+                
+                <h6 style="color: var(--ark-primary); font-family: 'Exo 2', sans-serif;">
+                    <i class="bi bi-activity"></i> System Vitals
+                </h6>
+                <div class="mb-2 p-2" style="background: rgba(0, 255, 65, 0.1); border-radius: 5px;">
+                    <small class="text-muted">Last Scan:</small>
+                    <br>
+                    <small style="font-family: monospace;">{{ status.last_updated }}</small>
+                </div>
+                
+                <button class="btn btn-sm btn-outline-primary w-100" onclick="refreshStatus()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh Command Center
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function refreshStatus() {
+    fetch('/api/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Status refresh failed:', data.error);
+                return;
+            }
+            // Update the page with new status
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error refreshing status:', error);
+        });
+}
+
+// Process Management Functions
+function refreshProcessStatus() {
+    fetch('/api/process/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateProcessDisplay(data.process);
+            } else {
+                console.error('Process status check failed:', data.error);
+                FunnyCommentator.showToast('Failed to check process status', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking process status:', error);
+            FunnyCommentator.showToast('Error checking process status', 'error');
+        });
+}
+
+function updateProcessDisplay(processData) {
+    const statusIcon = document.getElementById('process-status-icon');
+    const statusText = document.getElementById('process-status-text');
+    const statusBadge = document.getElementById('process-status-badge');
+    const uptime = document.getElementById('process-uptime');
+    const cpu = document.getElementById('process-cpu');
+    const memory = document.getElementById('process-memory');
+    const pid = document.getElementById('process-pid');
+    const lastCheck = document.getElementById('process-last-check');
+    
+    const startBtn = document.getElementById('btn-start');
+    const restartBtn = document.getElementById('btn-restart');
+    const stopBtn = document.getElementById('btn-stop');
+    
+    if (processData.is_running) {
+        statusIcon.className = 'bi bi-check-circle-fill text-success';
+        statusText.className = 'badge bg-success';
+        statusText.textContent = 'Running';
+        statusBadge.className = 'badge bg-success';
+        statusBadge.innerHTML = '<i class="bi bi-check-circle"></i> Running';
+        
+        uptime.textContent = processData.uptime_formatted || '--';
+        cpu.textContent = processData.cpu_percent ? `${processData.cpu_percent.toFixed(1)}%` : '--%';
+        memory.textContent = processData.memory_percent ? `${processData.memory_percent.toFixed(1)}%` : '--%';
+        pid.textContent = processData.pid || '--';
+        
+        startBtn.disabled = true;
+        restartBtn.disabled = false;
+        stopBtn.disabled = false;
+    } else {
+        statusIcon.className = 'bi bi-x-circle-fill text-danger';
+        statusText.className = 'badge bg-danger';
+        statusText.textContent = 'Stopped';
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.innerHTML = '<i class="bi bi-x-circle"></i> Stopped';
+        
+        uptime.textContent = '--';
+        cpu.textContent = '--%';
+        memory.textContent = '--%';
+        pid.textContent = '--';
+        
+        startBtn.disabled = false;
+        restartBtn.disabled = true;
+        stopBtn.disabled = true;
+    }
+    
+    lastCheck.textContent = new Date().toLocaleTimeString();
+}
+
+function startApplication() {
+    const button = document.getElementById('btn-start');
+    const originalText = button.innerHTML;
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+    
+    fetch('/api/process/start', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                FunnyCommentator.showToast(data.message, 'success');
+                updateProcessDisplay(data.process);
+            } else {
+                FunnyCommentator.showToast(data.error || data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error starting application:', error);
+            FunnyCommentator.showToast('Error starting application', 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            setTimeout(refreshProcessStatus, 2000); // Refresh status after 2 seconds
+        });
+}
+
+function stopApplication() {
+    if (!confirm('Are you sure you want to stop the FunnyCommentator application? This will stop all monitoring and AI commentary.')) {
+        return;
+    }
+    
+    const button = document.getElementById('btn-stop');
+    const originalText = button.innerHTML;
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Stopping...';
+    
+    fetch('/api/process/stop', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                FunnyCommentator.showToast(data.message, 'success');
+                updateProcessDisplay(data.process);
+            } else {
+                FunnyCommentator.showToast(data.error || data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error stopping application:', error);
+            FunnyCommentator.showToast('Error stopping application', 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            setTimeout(refreshProcessStatus, 2000); // Refresh status after 2 seconds
+        });
+}
+
+function restartApplication() {
+    if (!confirm('Are you sure you want to restart the FunnyCommentator application? This will temporarily interrupt monitoring.')) {
+        return;
+    }
+    
+    const button = document.getElementById('btn-restart');
+    const originalText = button.innerHTML;
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Restarting...';
+    
+    fetch('/api/process/restart', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                FunnyCommentator.showToast(data.message, 'success');
+                updateProcessDisplay(data.process);
+            } else {
+                FunnyCommentator.showToast(data.error || data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error restarting application:', error);
+            FunnyCommentator.showToast('Error restarting application', 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            setTimeout(refreshProcessStatus, 5000); // Refresh status after 5 seconds (restart takes longer)
+        });
+}
+
+// Initialize process status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    refreshProcessStatus();
+    // Auto-refresh process status every 30 seconds
+    setInterval(refreshProcessStatus, 30000);
+});
+</script>
+{% endblock %}

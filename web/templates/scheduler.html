@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Scheduler - FunnyCommentator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-clock"></i> Scheduler Configuration
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Daily Summary Schedule</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('update_scheduler') }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="logs_summary_hour" class="form-label">Hour (24-hour format) *</label>
+                            <select class="form-select" id="logs_summary_hour" name="logs_summary_hour" required>
+                                {% for hour in range(24) %}
+                                    <option value="{{ hour }}" 
+                                        {% if config and config.scheduler_logs_hour == hour %}selected{% endif %}>
+                                        {{ "%02d"|format(hour) }}:00 ({{ "Midnight" if hour == 0 else "Noon" if hour == 12 else ("%d AM"|format(hour) if hour < 12 else "%d PM"|format(hour - 12)) }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Hour when daily summaries should be generated</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="logs_summary_minute" class="form-label">Minute *</label>
+                            <select class="form-select" id="logs_summary_minute" name="logs_summary_minute" required>
+                                {% for minute in range(0, 60, 5) %}
+                                    <option value="{{ minute }}" 
+                                        {% if config and config.scheduler_logs_minute == minute %}selected{% endif %}>
+                                        {{ "%02d"|format(minute) }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Minute when summaries should start</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-info-circle"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-2">
+                                <h6 class="alert-heading">Current Schedule</h6>
+                                <p class="mb-0">
+                                    {% if config %}
+                                        Daily summaries will be generated at 
+                                        <strong>{{ "%02d:%02d"|format(config.scheduler_logs_hour, config.scheduler_logs_minute) }}</strong>
+                                        ({{ "Midnight" if config.scheduler_logs_hour == 0 else "Noon" if config.scheduler_logs_hour == 12 else ("%d AM"|format(config.scheduler_logs_hour) if config.scheduler_logs_hour < 12 else "%d PM"|format(config.scheduler_logs_hour - 12)) }})
+                                    {% else %}
+                                        No schedule configured
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Update Schedule
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="testSchedule()">
+                            <i class="bi bi-play-circle"></i> Test Now
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="reloadScheduler()">
+                            <i class="bi bi-arrow-repeat"></i> Reload Scheduler
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Scheduling Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>How It Works</h6>
+                <p class="small">
+                    The scheduler automatically generates AI summaries of your server logs 
+                    at the specified time each day. The summaries are posted to your configured 
+                    Discord channels.
+                </p>
+                
+                <h6 class="mt-3">What Gets Summarized</h6>
+                <ul class="small">
+                    <li>Player activities and events</li>
+                    <li>Dinosaur taming and deaths</li>
+                    <li>Structure building and destruction</li>
+                    <li>PvP events (if applicable)</li>
+                    <li>Server events and notifications</li>
+                </ul>
+                
+                <h6 class="mt-3">Recommended Times</h6>
+                <ul class="small">
+                    <li><strong>Early Morning (6-8 AM):</strong> Daily briefing</li>
+                    <li><strong>Evening (6-8 PM):</strong> End of day summary</li>
+                    <li><strong>Late Night (11 PM - 1 AM):</strong> Overnight activity recap</li>
+                </ul>
+                
+                <div class="alert alert-warning mt-3">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-exclamation-triangle"></i> Performance Note
+                    </h6>
+                    <p class="small mb-0">
+                        Summary generation can take several minutes depending on your AI model 
+                        and the amount of log data to process.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        {% if config %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-event"></i> Next Execution
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-1">Next scheduled run:</p>
+                <p class="h6" id="nextExecution">Calculating...</p>
+                
+                <p class="small text-muted mb-1 mt-3">Time until next run:</p>
+                <p class="small" id="timeUntilNext">Calculating...</p>
+                
+                <button class="btn btn-sm btn-outline-primary" onclick="updateNextExecution()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function testSchedule() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    if (!FunnyCommentator.showConfirmDialog(
+        'Test Schedule',
+        'This will trigger a summary generation immediately. This may take several minutes to complete. Continue?'
+    )) {
+        return;
+    }
+    
+    FunnyCommentator.showButtonLoading(button, 'Running Test...');
+    
+    // Actually trigger the scheduler job
+    fetch('/scheduler/test', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        FunnyCommentator.hideButtonLoading(button, originalText);
+        if (data.success) {
+            FunnyCommentator.showToast('Test summary generation completed successfully! Check your Discord channels.', 'success');
+        } else {
+            FunnyCommentator.showToast('Test failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    })
+    .catch(error => {
+        FunnyCommentator.hideButtonLoading(button, originalText);
+        FunnyCommentator.showToast('Test failed: ' + error.message, 'error');
+    });
+}
+
+function reloadScheduler() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    if (!FunnyCommentator.showConfirmDialog(
+        'Reload Scheduler',
+        'This will reload the scheduler configuration from the config file without restarting the application. Continue?'
+    )) {
+        return;
+    }
+    
+    FunnyCommentator.showButtonLoading(button, 'Reloading...');
+    
+    fetch('/api/scheduler/reload', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        FunnyCommentator.hideButtonLoading(button, originalText);
+        if (data.success) {
+            FunnyCommentator.showToast(`Scheduler reloaded successfully! New schedule: ${data.schedule || 'unknown'}`, 'success');
+            // Refresh the page to show updated schedule
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            FunnyCommentator.showToast('Reload failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+    })
+    .catch(error => {
+        FunnyCommentator.hideButtonLoading(button, originalText);
+        FunnyCommentator.showToast('Reload failed: ' + error.message, 'error');
+    });
+}
+
+function updateNextExecution() {
+    {% if config %}
+    const hour = {{ config.scheduler_logs_hour }};
+    const minute = {{ config.scheduler_logs_minute }};
+    
+    const now = new Date();
+    const next = new Date();
+    next.setHours(hour, minute, 0, 0);
+    
+    // If the time has passed today, schedule for tomorrow
+    if (next <= now) {
+        next.setDate(next.getDate() + 1);
+    }
+    
+    document.getElementById('nextExecution').textContent = next.toLocaleString();
+    
+    // Calculate time difference
+    const diff = next - now;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    document.getElementById('timeUntilNext').textContent = `${hours} hours, ${minutes} minutes`;
+    {% endif %}
+}
+
+// Update the countdown every minute
+document.addEventListener('DOMContentLoaded', function() {
+    updateNextExecution();
+    setInterval(updateNextExecution, 60000); // Update every minute
+    
+    // Form change handler to show preview
+    const hourSelect = document.getElementById('logs_summary_hour');
+    const minuteSelect = document.getElementById('logs_summary_minute');
+    
+    function updatePreview() {
+        const hour = parseInt(hourSelect.value);
+        const minute = parseInt(minuteSelect.value);
+        
+        let timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        let amPm = '';
+        
+        if (hour === 0) {
+            amPm = ' (Midnight)';
+        } else if (hour === 12) {
+            amPm = ' (Noon)';
+        } else if (hour < 12) {
+            amPm = ` (${hour} AM)`;
+        } else {
+            amPm = ` (${hour - 12} PM)`;
+        }
+        
+        // Update any preview elements if they exist
+        const preview = document.querySelector('.schedule-preview');
+        if (preview) {
+            preview.textContent = timeStr + amPm;
+        }
+    }
+    
+    hourSelect.addEventListener('change', updatePreview);
+    minuteSelect.addEventListener('change', updatePreview);
+});
+</script>
+{% endblock %}

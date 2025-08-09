@@ -1,0 +1,1047 @@
+/* ARK: Survival Evolved Theme for FunnyCommentator */
+
+:root {
+    /* ARK Color Palette - Green Theme */
+    --ark-primary: #00ff41;        /* ARK signature bright green */
+    --ark-secondary: #00d4aa;      /* ARK secondary green */
+    --ark-dark: #1a1a1a;          /* Deep black */
+    --ark-darker: #0d0d0d;        /* Darker black */
+    --ark-stone: #3d3d3d;         /* Stone gray */
+    --ark-stone-light: #5a5a5a;   /* Lighter stone */
+    --ark-success: #4caf50;       /* Tamed dino green */
+    --ark-warning: #ffc107;       /* Warning amber */
+    --ark-danger: #f44336;        /* Dangerous red */
+    --ark-info: #2196f3;          /* Info blue */
+    --ark-metal: #666666;         /* Metal texture */
+    --ark-glow: rgba(0, 255, 65, 0.3); /* ARK green glow */
+}
+
+/* Global Styles */
+body {
+    background: 
+        linear-gradient(135deg, rgba(26, 26, 26, 0.85) 0%, rgba(13, 13, 13, 0.9) 100%),
+        url('../1446065.jpg') no-repeat center center fixed;
+    background-size: cover;
+    color: #e0e0e0;
+    font-family: 'Exo 2', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* Add subtle texture overlay with animated particles */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 25% 25%, rgba(0, 255, 65, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(0, 255, 65, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(0, 255, 65, 0.03) 0%, transparent 70%);
+    z-index: -1;
+    pointer-events: none;
+    animation: backgroundShimmer 10s ease-in-out infinite alternate;
+}
+
+@keyframes backgroundShimmer {
+    0% { opacity: 0.3; }
+    100% { opacity: 0.6; }
+}
+
+@keyframes backgroundShimmer {
+    0% { opacity: 0.3; }
+    100% { opacity: 0.6; }
+}
+
+/* Navigation Bar - ARK Style */
+.navbar {
+    background: linear-gradient(45deg, var(--ark-darker) 0%, var(--ark-stone) 100%) !important;
+    border-bottom: 3px solid var(--ark-primary);
+    box-shadow: 0 4px 20px var(--ark-glow);
+    backdrop-filter: blur(10px);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: var(--ark-primary) !important;
+    text-shadow: 0 0 10px var(--ark-glow), 2px 2px 4px rgba(0, 0, 0, 0.8); /* Stronger text shadow */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.navbar-brand span {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 0 15px var(--ark-glow), 2px 2px 4px rgba(0, 0, 0, 0.9); /* Enhanced readability */
+}
+
+.navbar-brand i {
+    font-size: 2rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+.nav-link {
+    color: #ffffff !important; /* Bright white for better contrast */
+    font-weight: 600; /* Slightly bolder */
+    transition: all 0.3s ease;
+    border-radius: 5px;
+    margin: 0 5px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Add text shadow for readability */
+}
+
+.nav-link:hover {
+    color: var(--ark-primary) !important; /* Bright green text */
+    background: rgba(0, 0, 0, 0.6); /* Dark background for better contrast */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px var(--ark-glow);
+    text-shadow: 0 0 8px var(--ark-glow); /* Green glow effect */
+}
+
+.nav-link.active, .navbar-nav .nav-link.active {
+    color: #666666 !important; /* Darker gray text for active state */
+    background: rgba(0, 0, 0, 0.4);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+    font-weight: 700;
+}
+
+/* Cards - Stone/Metal Theme */
+.card {
+    background: linear-gradient(145deg, var(--ark-stone) 0%, var(--ark-stone-light) 100%);
+    border: 2px solid var(--ark-metal);
+    border-radius: 15px;
+    box-shadow: 
+        0 8px 20px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    color: #e0e0e0;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+        0 15px 30px rgba(0, 0, 0, 0.4),
+        0 0 20px var(--ark-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.card-header {
+    background: linear-gradient(45deg, var(--ark-primary) 0%, var(--ark-secondary) 100%);
+    border-bottom: 2px solid var(--ark-metal);
+    font-weight: bold;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    color: #000000 !important; /* Dark text on bright green background */
+}
+
+/* Buttons - Tribal/Rugged Style */
+.btn-primary {
+    background: linear-gradient(45deg, var(--ark-primary) 0%, var(--ark-secondary) 100%);
+    border: 2px solid var(--ark-metal);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px var(--ark-glow);
+    color: #000000 !important; /* Dark text on bright green */
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, var(--ark-secondary) 0%, var(--ark-primary) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px var(--ark-glow);
+    border-color: var(--ark-primary);
+    color: #000000 !important; /* Keep dark text on hover */
+}
+
+.btn-success {
+    background: linear-gradient(45deg, var(--ark-success) 0%, #66bb6a 100%);
+    border: 2px solid var(--ark-metal);
+    font-weight: bold;
+}
+
+.btn-warning {
+    background: linear-gradient(45deg, var(--ark-warning) 0%, #ffca28 100%);
+    border: 2px solid var(--ark-metal);
+    font-weight: bold;
+    color: var(--ark-dark);
+}
+
+.btn-danger {
+    background: linear-gradient(45deg, var(--ark-danger) 0%, #ef5350 100%);
+    border: 2px solid var(--ark-metal);
+    font-weight: bold;
+}
+
+/* Forms - Stone Texture */
+.form-control, .form-select {
+    background: var(--ark-stone);
+    border: 2px solid var(--ark-metal);
+    color: #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    background: var(--ark-stone-light);
+    border-color: var(--ark-primary);
+    box-shadow: 0 0 15px var(--ark-glow);
+    color: #ffffff;
+}
+
+.form-label {
+    color: var(--ark-primary);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Alerts - Enhanced with ARK styling */
+.alert {
+    border-radius: 10px;
+    border-width: 2px;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: linear-gradient(45deg, rgba(76, 175, 80, 0.2) 0%, rgba(102, 187, 106, 0.2) 100%);
+    border-color: var(--ark-success);
+    color: #c8e6c9;
+}
+
+.alert-danger {
+    background: linear-gradient(45deg, rgba(244, 67, 54, 0.2) 0%, rgba(239, 83, 80, 0.2) 100%);
+    border-color: var(--ark-danger);
+    color: #ffcdd2;
+}
+
+.alert-warning {
+    background: linear-gradient(45deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 202, 40, 0.2) 100%);
+    border-color: var(--ark-warning);
+    color: #fff3c4;
+}
+
+.alert-info {
+    background: linear-gradient(45deg, rgba(23, 162, 184, 0.2) 0%, rgba(32, 201, 151, 0.2) 100%);
+    border-color: #17a2b8;
+    color: #b3ecf0;
+}
+
+/* Tables - Metal Grid Style */
+.table {
+    color: #e0e0e0;
+    background: var(--ark-stone);
+}
+
+.table td, .table th {
+    border-color: var(--ark-metal);
+    color: #e0e0e0;
+}
+
+.table td strong {
+    color: #ffffff;
+}
+
+.table code {
+    background: rgba(0, 255, 65, 0.15);
+    color: #00d4aa;
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.table-dark {
+    background: var(--ark-stone);
+    border: 2px solid var(--ark-metal);
+}
+
+.table-dark th {
+    background: linear-gradient(45deg, var(--ark-primary) 0%, var(--ark-secondary) 100%);
+    border-color: var(--ark-metal);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #000000 !important; /* Dark text on bright green headers */
+}
+
+.table-dark td {
+    border-color: var(--ark-metal);
+}
+
+/* Badges - Tribal Style */
+.badge {
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 12px;
+    border-radius: 20px;
+}
+
+.bg-success {
+    background: linear-gradient(45deg, var(--ark-success) 0%, #66bb6a 100%) !important;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.bg-warning {
+    background: linear-gradient(45deg, var(--ark-warning) 0%, #ffca28 100%) !important;
+    color: var(--ark-dark) !important;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.bg-danger {
+    background: linear-gradient(45deg, var(--ark-danger) 0%, #ef5350 100%) !important;
+    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+/* Status Indicators */
+.text-primary { color: var(--ark-primary) !important; }
+.text-success { color: var(--ark-success) !important; }
+.text-warning { color: var(--ark-warning) !important; }
+.text-danger { color: var(--ark-danger) !important; }
+.text-info { color: #26c6da !important; }
+
+/* Fix Bootstrap text-muted for better readability on dark background */
+.text-muted { 
+    color: #b0b0b0 !important; 
+    opacity: 1 !important;
+}
+
+/* Ensure all text has good contrast on dark background */
+.card-text, .card-body small, .list-unstyled li, .small {
+    color: #e0e0e0 !important;
+}
+
+/* Make sure badges with secondary background are readable */
+.bg-secondary {
+    background: linear-gradient(45deg, #6c757d 0%, #868e96 100%) !important;
+    color: #ffffff !important;
+}
+
+.bg-info {
+    background: linear-gradient(45deg, #17a2b8 0%, #20c997 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+}
+
+.bg-primary {
+    background: linear-gradient(45deg, var(--ark-primary) 0%, var(--ark-secondary) 100%) !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 8px var(--ark-glow);
+}
+
+/* Special ARK-themed Elements */
+.display-4 {
+    text-shadow: 0 0 20px currentColor;
+    animation: iconGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes iconGlow {
+    0% { filter: brightness(1); }
+    100% { filter: brightness(1.2); }
+}
+
+/* Server Status Cards */
+.h-100 {
+    min-height: 150px;
+}
+
+/* System Information Styling */
+pre {
+    background: var(--ark-stone);
+    border: 2px solid var(--ark-metal);
+    color: #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+}
+
+/* Improve readability for specific dashboard elements */
+.card-body h6, .card-body .h6 {
+    color: #c0c0c0 !important; /* Softer gray */
+    font-weight: bold;
+}
+
+.card-body strong {
+    color: #d0d0d0 !important; /* Softer than white */
+}
+
+/* Make AI model names and paths more readable */
+.text-muted small, small.text-muted {
+    color: #c0c0c0 !important;
+    font-size: 0.9rem;
+}
+
+/* List items in cards should be readable */
+.list-unstyled li {
+    color: #e0e0e0 !important;
+    margin-bottom: 0.5rem;
+}
+
+/* Ensure breadcrumbs are visible */
+.breadcrumb-item {
+    color: #ffffff !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.breadcrumb-item.active {
+    color: var(--ark-primary) !important;
+    text-shadow: 0 0 10px var(--ark-glow), 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Global text readability fixes */
+.card-text.text-muted {
+    color: #b0b0b0 !important;
+}
+
+small.text-muted, .small.text-muted {
+    color: #c0c0c0 !important;
+}
+
+/* Global heading readability - make all headers softer and easier on eyes */
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+    color: #c0c0c0 !important; /* Softer light gray instead of harsh white */
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+    font-weight: bold;
+}
+
+/* Special styling for main page headers */
+h1, .h1 {
+    color: var(--ark-primary) !important;
+    text-shadow: 0 0 10px var(--ark-glow), 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+h2, .h2 {
+    color: #d0d0d0 !important; /* Slightly brighter but still soft */
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Ensure all card text is readable */
+.card-body, .card-footer {
+    color: #e0e0e0;
+}
+
+.card-body h1, .card-body h2, .card-body h3, .card-body h4, .card-body h5, .card-body h6 {
+    color: #c0c0c0 !important; /* Softer light gray for card headings */
+}
+
+/* Additional readability improvements for labels and text */
+label, .form-label {
+    color: #d0d0d0 !important; /* Softer than white */
+    font-weight: 600;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.text-secondary {
+    color: #d0d0d0 !important;
+}
+
+/* Make sure all descriptive text is readable */
+p, .lead, .text-body {
+    color: #e0e0e0 !important;
+}
+
+/* Modal Styling - Dark ARK Theme */
+.modal-content {
+    background: var(--ark-stone);
+    border: 2px solid var(--ark-metal);
+    color: #e0e0e0;
+}
+
+.modal-header {
+    background: linear-gradient(45deg, var(--ark-primary) 0%, var(--ark-secondary) 100%);
+    border-bottom: 2px solid var(--ark-metal);
+    color: #000000; /* Dark text on bright green */
+}
+
+.modal-title {
+    color: #000000 !important; /* Dark text on bright green */
+}
+
+.modal-body {
+    background: var(--ark-stone);
+    color: #e0e0e0;
+}
+
+.modal-body ul {
+    color: #e0e0e0;
+}
+
+.modal-body li {
+    color: #e0e0e0 !important;
+}
+
+.modal-footer {
+    background: var(--ark-darker);
+    border-top: 2px solid var(--ark-metal);
+}
+
+.btn-close {
+    filter: invert(1);
+}
+
+/* List styling for credential displays */
+.list-unstyled li {
+    color: #e0e0e0 !important;
+    margin-bottom: 0.5rem;
+}
+
+/* Fix any remaining white backgrounds */
+.bg-white {
+    background: var(--ark-stone) !important;
+    color: #e0e0e0 !important;
+}
+
+/* Form Text and Help Text Readability */
+.form-text {
+    color: #d0d0d0 !important; /* Much brighter than Bootstrap's muted text */
+    font-size: 0.95rem; /* Slightly larger for better readability */
+    font-weight: 500; /* Medium weight for better visibility */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Add shadow for contrast */
+    line-height: 1.4; /* Better line spacing */
+}
+
+/* Enhanced text-muted for better readability */
+.text-muted {
+    color: #c8c8c8 !important; /* Much brighter than default Bootstrap muted */
+    font-weight: 500 !important; /* Medium weight */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important; /* Text shadow for contrast */
+}
+
+small.text-muted, .small.text-muted {
+    color: #c8c8c8 !important; /* Override previous rule with brighter color */
+    font-weight: 500 !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Button Icons - Dark icons on light backgrounds */
+.btn-outline-secondary i, 
+.btn-outline-primary i,
+.btn-outline-info i,
+.btn-outline-success i,
+.btn-outline-warning i {
+    color: #333333 !important; /* Dark icons for light button backgrounds */
+    text-shadow: none !important; /* Remove text shadow for crisp icons */
+}
+
+/* Ensure solid buttons have appropriate icon colors */
+.btn-primary i {
+    color: #000000 !important; /* Dark icons on bright green primary buttons */
+}
+
+.btn-success i {
+    color: #ffffff !important; /* White icons on green success buttons */
+}
+
+.btn-info i {
+    color: #ffffff !important; /* White icons on blue info buttons */
+}
+
+.btn-secondary i {
+    color: #ffffff !important; /* White icons on gray secondary buttons */
+}
+
+/* Specific credential page improvements */
+.input-group .btn-outline-secondary,
+.input-group .btn-outline-primary {
+    border-color: var(--ark-metal) !important;
+    background-color: rgba(255, 255, 255, 0.9) !important; /* Light background for better icon visibility */
+}
+
+.input-group .btn-outline-secondary:hover,
+.input-group .btn-outline-primary:hover {
+    background-color: rgba(255, 255, 255, 1) !important;
+    border-color: var(--ark-primary) !important;
+}
+
+/* Server info text (IP addresses, etc.) */
+.card-body small.text-muted {
+    color: #d0d0d0 !important; /* Brighter for IP addresses and server info */
+    font-family: 'Courier New', monospace; /* Monospace for technical info */
+    font-weight: 600 !important;
+    background: rgba(0, 0, 0, 0.3); /* Subtle dark background for contrast */
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Specific styling for server connection info */
+.server-info {
+    color: var(--ark-secondary) !important; /* Bright green for server info */
+    font-family: 'Courier New', monospace !important;
+    font-weight: 700 !important;
+    background: rgba(0, 212, 170, 0.15) !important; /* Subtle green background */
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(0, 212, 170, 0.3) !important;
+    display: inline-block !important;
+    margin-top: 4px !important;
+    text-shadow: 0 0 5px rgba(0, 212, 170, 0.5) !important; /* Soft glow */
+}
+
+/* Map name and form help text styling */
+.form-text strong,
+.form-text b {
+    color: var(--ark-secondary) !important; /* Bright green for important text like "Map:" */
+    font-weight: bold;
+}
+
+/* Alert heading text */
+.alert-heading {
+    color: inherit !important; /* Use alert's own color scheme */
+    font-weight: bold !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Ensure validation results are readable */
+.alert ul li {
+    color: inherit !important;
+}
+
+/* Force all validation and credential containers to use dark theme */
+#validationResults, #validationResults * {
+    background: var(--ark-stone) !important;
+    color: #e0e0e0 !important;
+}
+
+#validationResults .alert {
+    background: linear-gradient(45deg, rgba(76, 175, 80, 0.2) 0%, rgba(102, 187, 106, 0.2) 100%) !important;
+    border: 1px solid var(--ark-success) !important;
+    color: #c8e6c9 !important;
+}
+
+#validationResults .alert-success {
+    background: linear-gradient(45deg, rgba(76, 175, 80, 0.2) 0%, rgba(102, 187, 106, 0.2) 100%) !important;
+    border-color: var(--ark-success) !important;
+    color: #c8e6c9 !important;
+}
+
+#validationResults .alert-danger {
+    background: linear-gradient(45deg, rgba(244, 67, 54, 0.2) 0%, rgba(239, 83, 80, 0.2) 100%) !important;
+    border-color: var(--ark-danger) !important;
+    color: #ffcdd2 !important;
+}
+
+/* Any dynamically generated content should use dark theme */
+.credential-list, .validation-list, .server-list {
+    background: var(--ark-stone) !important;
+    color: #e0e0e0 !important;
+}
+
+/* Override any remaining Bootstrap defaults that might cause white backgrounds */
+.list-group {
+    background: var(--ark-stone) !important;
+}
+
+.list-group-item {
+    background: var(--ark-stone) !important;
+    color: #e0e0e0 !important;
+    border-color: var(--ark-metal) !important;
+}
+
+/* Nuclear option - force all white backgrounds to dark */
+*[style*="background-color: white"], 
+*[style*="background-color: #fff"], 
+*[style*="background-color: #ffffff"], 
+*[style*="background: white"], 
+*[style*="background: #fff"], 
+*[style*="background: #ffffff"] {
+    background: var(--ark-stone) !important;
+    color: #e0e0e0 !important;
+}
+
+/* Specific targeting for credential display areas */
+.modal-body > *, 
+.card-body > *, 
+.validation-results > *,
+div[id*="validation"] > *,
+div[class*="validation"] > *,
+div[class*="credential"] > * {
+    background: transparent !important;
+    color: #e0e0e0 !important;
+}
+
+/* Toast Notification Styling - Dark ARK Theme */
+.toast {
+    background: var(--ark-stone) !important;
+    border: 2px solid var(--ark-metal) !important;
+    color: #e0e0e0 !important;
+}
+
+.toast-header {
+    background: linear-gradient(45deg, var(--ark-primary) 0%, var(--ark-secondary) 100%) !important;
+    border-bottom: 2px solid var(--ark-metal) !important;
+    color: #ffffff !important;
+}
+
+.toast-header strong {
+    color: #ffffff !important;
+}
+
+.toast-body {
+    background: var(--ark-stone) !important;
+    color: #e0e0e0 !important;
+}
+
+.toast .btn-close {
+    filter: invert(1) !important;
+}
+
+/* Process Control Panel Styling */
+#process-status-icon {
+    font-size: 2rem;
+    transition: all 0.3s ease;
+}
+
+#process-status-icon.text-success {
+    animation: pulseSuccess 2s infinite;
+}
+
+#process-status-icon.text-danger {
+    animation: pulseDanger 2s infinite;
+}
+
+@keyframes pulseSuccess {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes pulseDanger {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.process-control-buttons .btn {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.process-control-buttons .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px var(--ark-glow);
+}
+
+.process-control-buttons .btn:disabled {
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Process status badges with animation */
+.badge {
+    transition: all 0.3s ease;
+}
+
+.badge.bg-success {
+    background: linear-gradient(45deg, var(--ark-success) 0%, #45a049 100%) !important;
+    animation: badgeGlow 3s ease-in-out infinite alternate;
+}
+
+.badge.bg-danger {
+    background: linear-gradient(45deg, var(--ark-danger) 0%, #d32f2f 100%) !important;
+}
+
+.badge.bg-warning {
+    background: linear-gradient(45deg, var(--ark-warning) 0%, #ff9800 100%) !important;
+}
+
+.badge.bg-info {
+    background: linear-gradient(45deg, var(--ark-info) 0%, #0288d1 100%) !important;
+}
+
+@keyframes badgeGlow {
+    0% { box-shadow: 0 0 5px rgba(76, 175, 80, 0.5); }
+    100% { box-shadow: 0 0 15px rgba(76, 175, 80, 0.8); }
+}
+
+/* Force text to be visible on any remaining white backgrounds */
+div, span, p, li {
+    color: #e0e0e0 !important;
+}
+
+/* But preserve specific colored text for icons and badges */
+.text-success, .text-danger, .text-warning, .text-info, .text-primary {
+    color: inherit !important;
+}
+
+.badge {
+    color: #ffffff !important;
+}
+
+/* Form Controls - ARK Theme */
+.form-control, .form-select {
+    background: var(--ark-darker) !important;
+    border: 2px solid var(--ark-metal) !important;
+    color: #ffffff !important;
+    font-weight: 500;
+}
+
+.form-control:focus, .form-select:focus {
+    background: var(--ark-stone) !important;
+    border-color: var(--ark-primary) !important;
+    box-shadow: 0 0 15px var(--ark-glow) !important;
+    color: #ffffff !important;
+}
+
+.form-control::placeholder {
+    color: #b0b0b0 !important;
+    opacity: 1 !important;
+}
+
+/* Input groups */
+.input-group-text {
+    background: var(--ark-metal) !important;
+    border: 2px solid var(--ark-metal) !important;
+    color: #ffffff !important;
+}
+
+/* Form labels */
+.form-label {
+    color: #ffffff !important;
+    font-weight: 600;
+}
+
+/* Form check (checkboxes, radios) */
+.form-check-input {
+    background: var(--ark-darker) !important;
+    border: 2px solid var(--ark-metal) !important;
+}
+
+.form-check-input:checked {
+    background: var(--ark-primary) !important;
+    border-color: var(--ark-primary) !important;
+}
+
+.form-check-label {
+    color: #e0e0e0 !important;
+}
+
+/* Form text/help text */
+.form-text {
+    color: #b0b0b0 !important;
+}
+
+/* Textarea specific */
+textarea.form-control {
+    background: var(--ark-darker) !important;
+    color: #ffffff !important;
+    resize: vertical;
+}
+
+/* Select dropdown */
+.form-select option {
+    background: var(--ark-stone) !important;
+    color: #ffffff !important;
+}
+
+/* Button Styling - Enhanced for Dark Theme */
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success, 
+.btn-outline-danger, .btn-outline-warning, .btn-outline-info {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    border-width: 2px !important;
+    font-weight: 500 !important;
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:focus {
+    background: var(--ark-primary) !important;
+    border-color: var(--ark-primary) !important;
+    color: #000000 !important; /* Dark text on bright green */
+}
+
+.btn-outline-danger:hover, .btn-outline-danger:focus {
+    background: var(--ark-danger) !important;
+    border-color: var(--ark-danger) !important;
+    color: #ffffff !important;
+}
+
+.btn-outline-secondary:hover, .btn-outline-secondary:focus {
+    background: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #ffffff !important;
+}
+
+/* Ensure solid buttons have proper contrast */
+.btn-primary {
+    background: linear-gradient(45deg, var(--ark-primary) 0%, var(--ark-secondary) 100%) !important;
+    border-color: var(--ark-primary) !important;
+    color: #000000 !important; /* Dark text on bright green */
+    font-weight: 600 !important;
+}
+
+.btn-danger {
+    background: linear-gradient(45deg, var(--ark-danger) 0%, #e53e3e 100%) !important;
+    border-color: var(--ark-danger) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+.btn-secondary {
+    background: linear-gradient(45deg, #6c757d 0%, #868e96 100%) !important;
+    border-color: #6c757d !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+/* Button hover effects */
+.btn-primary:hover, .btn-primary:focus {
+    background: linear-gradient(45deg, var(--ark-secondary) 0%, var(--ark-primary) 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px var(--ark-glow) !important;
+}
+
+.btn-danger:hover, .btn-danger:focus {
+    background: linear-gradient(45deg, #e53e3e 0%, var(--ark-danger) 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4) !important;
+}
+
+/* Loading Animations */
+.loading-spinner {
+    border: 4px solid var(--ark-stone);
+    border-top: 4px solid var(--ark-primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Footer styling */
+footer {
+    background: var(--ark-darker);
+    border-top: 2px solid var(--ark-primary);
+    color: #888;
+}
+
+/* Responsive Design Enhancements */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .card {
+        margin-bottom: 20px;
+    }
+}
+
+/* Laser Effects Overlay */
+.laser-particles {
+    position: fixed;
+    bottom: 20%;
+    right: 15%;
+    width: 300px;
+    height: 200px;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.laser-particles::before {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 300px;
+    background: linear-gradient(45deg, 
+        transparent 0%, 
+        rgba(255, 50, 50, 0.9) 10%, 
+        rgba(255, 100, 100, 1) 30%, 
+        rgba(255, 150, 150, 0.8) 60%, 
+        rgba(255, 200, 200, 0.4) 80%,
+        transparent 100%);
+    box-shadow: 
+        0 0 15px rgba(255, 0, 0, 0.8),
+        0 0 30px rgba(255, 0, 0, 0.6),
+        0 0 45px rgba(255, 0, 0, 0.4);
+    animation: laserBeam1 2s ease-in-out infinite alternate;
+    border-radius: 3px;
+    top: -100px;
+    left: 100px;
+    transform: rotate(-30deg);
+}
+
+.laser-particles::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 250px;
+    background: linear-gradient(45deg, 
+        transparent 0%, 
+        rgba(255, 80, 80, 0.8) 15%, 
+        rgba(255, 120, 120, 1) 40%, 
+        rgba(255, 160, 160, 0.7) 70%, 
+        transparent 100%);
+    box-shadow: 
+        0 0 12px rgba(255, 0, 0, 0.7),
+        0 0 24px rgba(255, 0, 0, 0.5),
+        0 0 36px rgba(255, 0, 0, 0.3);
+    animation: laserBeam2 2.5s ease-in-out infinite alternate;
+    border-radius: 2px;
+    top: -80px;
+    left: 150px;
+    transform: rotate(-45deg);
+}
+
+@keyframes laserBeam1 {
+    0% { 
+        opacity: 0.6;
+        transform: rotate(-30deg) scale(0.9);
+    }
+    50% {
+        opacity: 1;
+        transform: rotate(-28deg) scale(1.1);
+    }
+    100% { 
+        opacity: 0.8;
+        transform: rotate(-32deg) scale(1);
+    }
+}
+
+@keyframes laserBeam2 {
+    0% { 
+        opacity: 0.4;
+        transform: rotate(-45deg) scale(0.8);
+    }
+    50% {
+        opacity: 0.9;
+        transform: rotate(-43deg) scale(1.05);
+    }
+    100% { 
+        opacity: 0.7;
+        transform: rotate(-47deg) scale(0.95);
+    }
+}
+
+/* Custom ARK-themed scrollbar */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--ark-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, var(--ark-primary) 0%, var(--ark-secondary) 100%);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, var(--ark-secondary) 0%, var(--ark-primary) 100%);
+}
