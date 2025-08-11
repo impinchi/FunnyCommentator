@@ -67,7 +67,7 @@
         "path": "E:\\arkbot_memory.db"
     },
     "ip_monitor": {
-        "last_known_ip": "102.182.213.185",
+        "last_known_ip": "YOUR_EXTERNAL_IP_HERE",
         "check_interval_seconds": 3600
     },
     "clusters": {
