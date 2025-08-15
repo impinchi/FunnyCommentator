@@ -25,6 +25,8 @@ class ProcessStatus:
     start_time: Optional[float] = None
     uptime_seconds: Optional[int] = None
     status: str = "unknown"
+    system_cpu_percent: Optional[float] = None
+    system_memory_percent: Optional[float] = None
 
 class ProcessManager:
     """Manages the FunnyCommentator main application process."""
@@ -72,6 +74,15 @@ class ProcessManager:
             logging.error(f"Error finding running processes: {e}")
         return running_processes
         
+    def _get_system_metrics(self) -> tuple:
+        """Get system-wide CPU and memory usage."""
+        try:
+            system_cpu = psutil.cpu_percent(interval=0.1)
+            system_memory = psutil.virtual_memory().percent
+            return system_cpu, system_memory
+        except Exception:
+            return None, None
+
     def get_process_status(self) -> ProcessStatus:
         """Get the current status of the main application process."""
         try:
@@ -89,10 +100,22 @@ class ProcessManager:
                         logging.info(f"Found orphaned process {process.pid}, created PID file")
                         
                         # Get process information
-                        cpu_percent = process.cpu_percent()
-                        memory_percent = process.memory_percent()
+                        # Note: cpu_percent() with interval gives more accurate reading
+                        try:
+                            cpu_percent = process.cpu_percent(interval=0.1)
+                        except (psutil.AccessDenied, psutil.NoSuchProcess):
+                            cpu_percent = 0.0
+                        
+                        try:
+                            memory_percent = process.memory_percent()
+                        except (psutil.AccessDenied, psutil.NoSuchProcess):
+                            memory_percent = 0.0
+                        
                         start_time = process.create_time()
                         uptime_seconds = int(time.time() - start_time)
+                        
+                        # Get system-wide metrics
+                        system_cpu, system_memory = self._get_system_metrics()
                         
                         return ProcessStatus(
                             is_running=True,
@@ -101,19 +124,25 @@ class ProcessManager:
                             memory_percent=memory_percent,
                             start_time=start_time,
                             uptime_seconds=uptime_seconds,
-                            status="running_orphaned"
+                            status="running_orphaned",
+                            system_cpu_percent=system_cpu,
+                            system_memory_percent=system_memory
                         )
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         pass
                 
-                return ProcessStatus(is_running=False, status="not_started")
+                return ProcessStatus(is_running=False, status="not_started", 
+                                    system_cpu_percent=self._get_system_metrics()[0], 
+                                    system_memory_percent=self._get_system_metrics()[1])
             
             # Read PID from file
             try:
                 with open(self.pid_file, 'r') as f:
                     pid = int(f.read().strip())
             except (ValueError, FileNotFoundError):
-                return ProcessStatus(is_running=False, status="pid_file_invalid")
+                return ProcessStatus(is_running=False, status="pid_file_invalid",
+                                    system_cpu_percent=self._get_system_metrics()[0], 
+                                    system_memory_percent=self._get_system_metrics()[1])
             
             # Check if process is actually running
             try:
@@ -121,13 +150,26 @@ class ProcessManager:
                 
                 # Verify it's our process by checking command line
                 if not self._is_our_process(process):
-                    return ProcessStatus(is_running=False, status="different_process")
+                    return ProcessStatus(is_running=False, status="different_process",
+                                        system_cpu_percent=self._get_system_metrics()[0], 
+                                        system_memory_percent=self._get_system_metrics()[1])
                 
                 # Get process information
-                cpu_percent = process.cpu_percent()
-                memory_percent = process.memory_percent()
+                # Note: cpu_percent() with interval gives more accurate reading
+                try:
+                    cpu_percent = process.cpu_percent(interval=0.1)
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    cpu_percent = 0.0
+                
+                try:
+                    memory_percent = process.memory_percent()
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    memory_percent = 0.0
                 start_time = process.create_time()
                 uptime_seconds = int(time.time() - start_time)
+                
+                # Get system-wide metrics
+                system_cpu, system_memory = self._get_system_metrics()
                 
                 return ProcessStatus(
                     is_running=True,
@@ -136,7 +178,9 @@ class ProcessManager:
                     memory_percent=memory_percent,
                     start_time=start_time,
                     uptime_seconds=uptime_seconds,
-                    status="running"
+                    status="running",
+                    system_cpu_percent=system_cpu,
+                    system_memory_percent=system_memory
                 )
                 
             except psutil.NoSuchProcess:
@@ -145,11 +189,15 @@ class ProcessManager:
                     self.pid_file.unlink()
                 except FileNotFoundError:
                     pass
-                return ProcessStatus(is_running=False, status="process_not_found")
+                return ProcessStatus(is_running=False, status="process_not_found",
+                                    system_cpu_percent=self._get_system_metrics()[0], 
+                                    system_memory_percent=self._get_system_metrics()[1])
             
         except Exception as e:
             logging.error(f"Error checking process status: {e}")
-            return ProcessStatus(is_running=False, status="error")
+            return ProcessStatus(is_running=False, status="error",
+                                system_cpu_percent=self._get_system_metrics()[0], 
+                                system_memory_percent=self._get_system_metrics()[1])
     
     def start_application(self) -> Dict[str, Any]:
         """Start the main application."""

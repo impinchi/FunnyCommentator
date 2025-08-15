@@ -46,7 +46,7 @@
     ],
     "ai": {
         "ollama_start_cmd": "ollama serve",
-        "input_token_size": 32000,
+        "input_token_size": 16000,
         "timeout_seconds": 10800,
         "ollama_url": "http://localhost:11434/api/generate",
         "ollama_model": "deepseek-r1:70b",
@@ -55,12 +55,12 @@
     },
     "rcon": {
         "timeout_seconds": 15,
-        "retry_attempts": 3,
-        "retry_delay": 2,
+        "retry_attempts": 1,
+        "retry_delay": 20,
         "warmup_command": "ListPlayers"
     },
     "scheduler": {
-        "logs_summary_hour": 11,
+        "logs_summary_hour": 3,
         "logs_summary_minute": 0
     },
     "database": {
@@ -68,7 +68,9 @@
     },
     "ip_monitor": {
         "last_known_ip": "102.182.213.185",
-        "check_interval_seconds": 3600
+        "check_interval_seconds": 3600,
+        "discord_notifications": true,
+        "auto_monitoring": true
     },
     "clusters": {
         "primary_cluster": {

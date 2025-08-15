@@ -91,7 +91,7 @@
                 <div class="row">
                     <div class="col-md-8">
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="text-center">
                                     <div class="h4 mb-2">
                                         <i id="process-status-icon" class="bi bi-question-circle text-muted"></i>
@@ -100,7 +100,7 @@
                                     <span id="process-status-text" class="badge bg-secondary">Unknown</span>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="text-center">
                                     <div class="h4 mb-2">
                                         <i class="bi bi-clock text-info"></i>
@@ -109,22 +109,40 @@
                                     <span id="process-uptime" class="badge bg-info">--</span>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="text-center">
                                     <div class="h4 mb-2">
                                         <i class="bi bi-cpu text-warning"></i>
                                     </div>
-                                    <h6>CPU</h6>
+                                    <h6>App CPU</h6>
                                     <span id="process-cpu" class="badge bg-warning">--%</span>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="text-center">
                                     <div class="h4 mb-2">
                                         <i class="bi bi-memory text-success"></i>
                                     </div>
-                                    <h6>Memory</h6>
+                                    <h6>App Memory</h6>
                                     <span id="process-memory" class="badge bg-success">--%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <div class="h4 mb-2">
+                                        <i class="bi bi-speedometer2 text-danger"></i>
+                                    </div>
+                                    <h6>System CPU</h6>
+                                    <span id="system-cpu" class="badge bg-danger">--%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <div class="h4 mb-2">
+                                        <i class="bi bi-hdd text-primary"></i>
+                                    </div>
+                                    <h6>System RAM</h6>
+                                    <span id="system-memory" class="badge bg-primary">--%</span>
                                 </div>
                             </div>
                         </div>
@@ -246,15 +264,35 @@
                             {% set security_score = 25 %}
                         {% endif %}
                         
-                        <div class="progress-bar 
-                            {% if security_score >= 90 %}bg-success
-                            {% elif security_score >= 70 %}bg-info
-                            {% elif security_score >= 50 %}bg-warning
-                            {% else %}bg-danger{% endif %}" 
-                            style="width: {{ security_score }}%">
+                        <div class="progress-bar security-progress-bar
+                            {% if security_score >= 90 %}security-excellent
+                            {% elif security_score >= 70 %}security-good
+                            {% elif security_score >= 50 %}security-moderate
+                            {% else %}security-poor{% endif %}" 
+                            data-width="{{ security_score }}"
+                            role="progressbar" 
+                            aria-valuenow="{{ security_score }}" 
+                            aria-valuemin="0" 
+                            aria-valuemax="100">
+                            <span class="security-score-text">{{ security_score }}%</span>
                         </div>
                     </div>
-                    <small class="text-muted">Security Score: {{ security_score }}%</small>
+                    <div class="security-score-label">
+                        <small class="text-muted">
+                            <i class="bi bi-shield-check"></i> 
+                            Security Score: {{ security_score }}% 
+                            <span class="security-level-badge badge 
+                                {% if security_score >= 90 %}bg-dark text-success
+                                {% elif security_score >= 70 %}bg-dark text-info
+                                {% elif security_score >= 50 %}bg-dark text-warning
+                                {% else %}bg-dark text-danger{% endif %}">
+                                {% if security_score >= 90 %}Excellent
+                                {% elif security_score >= 70 %}Good
+                                {% elif security_score >= 50 %}Moderate
+                                {% else %}Needs Attention{% endif %}
+                            </span>
+                        </small>
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -347,6 +385,9 @@
                     <a href="{{ url_for('scheduler_config') }}" class="btn btn-success">
                         <i class="bi bi-clock-history"></i> Automation Schedule
                     </a>
+                    <a href="{{ url_for('ip_monitor') }}" class="btn btn-secondary">
+                        <i class="bi bi-globe"></i> IP Monitor
+                    </a>
                 </div>
                 
                 <hr style="border-color: var(--ark-metal);">
@@ -393,7 +434,7 @@ function refreshProcessStatus() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                updateProcessDisplay(data.process);
+                updateProcessDisplay(data);
             } else {
                 console.error('Process status check failed:', data.error);
                 FunnyCommentator.showToast('Failed to check process status', 'error');
@@ -405,13 +446,18 @@ function refreshProcessStatus() {
         });
 }
 
-function updateProcessDisplay(processData) {
+function updateProcessDisplay(data) {
+    const processData = data.process;
+    const systemData = data.system || {};
+    
     const statusIcon = document.getElementById('process-status-icon');
     const statusText = document.getElementById('process-status-text');
     const statusBadge = document.getElementById('process-status-badge');
     const uptime = document.getElementById('process-uptime');
     const cpu = document.getElementById('process-cpu');
     const memory = document.getElementById('process-memory');
+    const systemCpu = document.getElementById('system-cpu');
+    const systemMemory = document.getElementById('system-memory');
     const pid = document.getElementById('process-pid');
     const lastCheck = document.getElementById('process-last-check');
     
@@ -427,8 +473,8 @@ function updateProcessDisplay(processData) {
         statusBadge.innerHTML = '<i class="bi bi-check-circle"></i> Running';
         
         uptime.textContent = processData.uptime_formatted || '--';
-        cpu.textContent = processData.cpu_percent ? `${processData.cpu_percent.toFixed(1)}%` : '--%';
-        memory.textContent = processData.memory_percent ? `${processData.memory_percent.toFixed(1)}%` : '--%';
+        cpu.textContent = (processData.cpu_percent !== undefined && processData.cpu_percent !== null) ? `${processData.cpu_percent.toFixed(1)}%` : '--%';
+        memory.textContent = (processData.memory_percent !== undefined && processData.memory_percent !== null) ? `${processData.memory_percent.toFixed(1)}%` : '--%';
         pid.textContent = processData.pid || '--';
         
         startBtn.disabled = true;
@@ -451,6 +497,14 @@ function updateProcessDisplay(processData) {
         stopBtn.disabled = true;
     }
     
+    // Update system metrics regardless of process status
+    if (systemCpu) {
+        systemCpu.textContent = (systemData.cpu_percent !== undefined && systemData.cpu_percent !== null) ? `${systemData.cpu_percent.toFixed(1)}%` : '--%';
+    }
+    if (systemMemory) {
+        systemMemory.textContent = (systemData.memory_percent !== undefined && systemData.memory_percent !== null) ? `${systemData.memory_percent.toFixed(1)}%` : '--%';
+    }
+    
     lastCheck.textContent = new Date().toLocaleTimeString();
 }
 
@@ -466,7 +520,7 @@ function startApplication() {
         .then(data => {
             if (data.success) {
                 FunnyCommentator.showToast(data.message, 'success');
-                updateProcessDisplay(data.process);
+                updateProcessDisplay(data);
             } else {
                 FunnyCommentator.showToast(data.error || data.message, 'error');
             }
@@ -497,7 +551,7 @@ function stopApplication() {
         .then(data => {
             if (data.success) {
                 FunnyCommentator.showToast(data.message, 'success');
-                updateProcessDisplay(data.process);
+                updateProcessDisplay(data);
             } else {
                 FunnyCommentator.showToast(data.error || data.message, 'error');
             }
@@ -528,7 +582,7 @@ function restartApplication() {
         .then(data => {
             if (data.success) {
                 FunnyCommentator.showToast(data.message, 'success');
-                updateProcessDisplay(data.process);
+                updateProcessDisplay(data);
             } else {
                 FunnyCommentator.showToast(data.error || data.message, 'error');
             }
@@ -548,6 +602,13 @@ document.addEventListener('DOMContentLoaded', function() {
     refreshProcessStatus();
     // Auto-refresh process status every 30 seconds
     setInterval(refreshProcessStatus, 30000);
+    
+    // Set security score progress bar width
+    const progressBar = document.querySelector('.security-progress-bar[data-width]');
+    if (progressBar) {
+        const width = progressBar.getAttribute('data-width');
+        progressBar.style.width = width + '%';
+    }
 });
 </script>
 {% endblock %}

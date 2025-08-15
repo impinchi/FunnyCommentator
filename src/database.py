@@ -44,6 +44,18 @@ class DatabaseManager:
                     summary BLOB
                 )
             """)
+            
+            # Create table for IP history tracking
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS ip_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ip_address TEXT NOT NULL,
+                    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    change_type TEXT DEFAULT 'auto',
+                    old_ip_address TEXT,
+                    notified BOOLEAN DEFAULT FALSE
+                )
+            """)
     
     def save_summary(self, server_name: str, summary: str) -> None:
         """Save a compressed summary to the server's table.
@@ -150,3 +162,68 @@ class DatabaseManager:
         but this method exists for consistency with other database interfaces.
         """
         pass  # Connections are managed by context managers
+    
+    def log_ip_change(self, old_ip: str, new_ip: str, change_type: str = 'auto') -> None:
+        """Log an IP address change to the database.
+        
+        Args:
+            old_ip: Previous IP address
+            new_ip: New IP address  
+            change_type: Type of change ('auto', 'manual', 'startup')
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT INTO ip_history (ip_address, old_ip_address, change_type, notified)
+                VALUES (?, ?, ?, ?)
+            """, (new_ip, old_ip, change_type, False))
+    
+    def get_ip_history(self, limit: int = 50) -> List[Dict]:
+        """Get recent IP change history.
+        
+        Args:
+            limit: Maximum number of records to return
+            
+        Returns:
+            List of dictionaries containing IP history records
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("""
+                SELECT id, ip_address, old_ip_address, changed_at, change_type, notified
+                FROM ip_history 
+                ORDER BY changed_at DESC 
+                LIMIT ?
+            """, (limit,))
+            
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def get_current_ip_record(self) -> Dict:
+        """Get the most recent IP record.
+        
+        Returns:
+            Dictionary containing the latest IP record or empty dict
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("""
+                SELECT ip_address, changed_at, change_type
+                FROM ip_history 
+                ORDER BY changed_at DESC 
+                LIMIT 1
+            """)
+            
+            row = cursor.fetchone()
+            return dict(row) if row else {}
+    
+    def mark_ip_change_notified(self, ip_record_id: int) -> None:
+        """Mark an IP change as having been notified via Discord.
+        
+        Args:
+            ip_record_id: ID of the IP history record to mark as notified
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                UPDATE ip_history 
+                SET notified = TRUE 
+                WHERE id = ?
+            """, (ip_record_id,))

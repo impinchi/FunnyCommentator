@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block title %}IP Monitor - ARK FunnyCommentator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4" style="font-family: 'Orbitron', monospace; text-shadow: 0 0 20px var(--ark-glow);">
+            <i class="bi bi-globe"></i> IP Monitor & Network Configuration
+        </h1>
+        <p class="lead mb-4" style="color: var(--ark-primary);">
+            <i class="bi bi-router"></i> Monitor external IP address changes and network configuration
+        </p>
+    </div>
+</div>
+
+<!-- IP Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-4 col-sm-6 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 text-success mb-2">
+                    <i class="bi bi-globe2"></i>
+                </div>
+                <h5 class="card-title" style="font-family: 'Orbitron', monospace;">Current IP</h5>
+                <h4 id="current-ip" class="text-success">{{ ip_status.current_ip or '--' }}</h4>
+                <button class="btn btn-sm btn-outline-success" onclick="copyToClipboard('current-ip')">
+                    <i class="bi bi-clipboard"></i> Copy
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 col-sm-6 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 text-info mb-2">
+                    <i class="bi bi-archive"></i>
+                </div>
+                <h5 class="card-title" style="font-family: 'Orbitron', monospace;">Last Known IP</h5>
+                <h4 id="last-known-ip" class="text-info">{{ ip_status.last_known_ip or '--' }}</h4>
+                <small class="text-muted">From Configuration</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 col-sm-6 mb-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 mb-2" id="status-icon">
+                    <i class="bi bi-question-circle text-muted"></i>
+                </div>
+                <h5 class="card-title" style="font-family: 'Orbitron', monospace;">Status</h5>
+                <p class="card-text">
+                    <span id="ip-status-badge" class="badge bg-secondary">Checking...</span>
+                </p>
+                <small class="text-muted">Last check: <span id="last-check">--</span></small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- IP Monitor Configuration -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-gear-wide-connected"></i> Monitor Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="ip-config-form">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="check_interval" class="form-label">
+                                    <i class="bi bi-clock"></i> Check Interval (seconds)
+                                </label>
+                                <input type="number" class="form-control" id="check_interval" 
+                                       value="{{ ip_status.config.check_interval_seconds or 3600 }}" min="60" max="86400">
+                                <div class="form-text">How often to check for IP changes (60-86400 seconds)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-bell"></i> Discord Notifications
+                                </label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="discord_notifications" 
+                                           {{ 'checked' if ip_status.config.discord_notifications else '' }}>
+                                    <label class="form-check-label" for="discord_notifications">
+                                        Send notifications on IP change
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-play-circle"></i> Auto Monitoring
+                                </label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="auto_monitoring" 
+                                           {{ 'checked' if ip_status.config.auto_monitoring else '' }}>
+                                    <label class="form-check-label" for="auto_monitoring">
+                                        Enable automatic monitoring
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="manual_ip" class="form-label">
+                                    <i class="bi bi-pencil"></i> Manual IP Override
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="manual_ip" 
+                                           placeholder="Enter IP address manually">
+                                    <button class="btn btn-outline-warning" type="button" onclick="updateManualIP()">
+                                        <i class="bi bi-arrow-up-circle"></i> Set
+                                    </button>
+                                </div>
+                                <div class="form-text">Manually set the last known IP address</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-tools"></i> Actions
+                                </label>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-primary" onclick="checkIPNow()">
+                                        <i class="bi bi-search"></i> Check IP Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- IP Change History -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history"></i> IP Change History
+                </h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshHistory()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="history-loading" class="text-center">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    Loading history...
+                </div>
+                
+                <div id="history-table" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-calendar"></i> Date/Time</th>
+                                    <th><i class="bi bi-arrow-left-right"></i> IP Change</th>
+                                    <th><i class="bi bi-tag"></i> Type</th>
+                                    <th><i class="bi bi-bell"></i> Notified</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-tbody">
+                                <!-- History will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div id="history-empty" style="display: none;" class="text-center text-muted">
+                    <i class="bi bi-inbox"></i>
+                    <p>No IP change history found</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let refreshInterval;
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    refreshIPStatus();
+    loadIPHistory();
+    
+    // Setup auto-refresh based on check interval
+    setupAutoRefresh();
+    
+    // Setup form submission
+    document.getElementById('ip-config-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveConfiguration();
+    });
+});
+
+function setupAutoRefresh() {
+    // Clear existing interval
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    
+    // Get check interval from form (convert to milliseconds)
+    const checkInterval = parseInt(document.getElementById('check_interval').value) * 1000;
+    
+    // Set up auto-refresh (minimum 30 seconds for UI updates)
+    const refreshRate = Math.max(30000, checkInterval);
+    refreshInterval = setInterval(refreshIPStatus, refreshRate);
+}
+
+function refreshIPStatus() {
+    fetch('/api/ip/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateIPDisplay(data.status);
+            } else {
+                console.error('Failed to get IP status:', data.error);
+                FunnyCommentator.showToast('Failed to refresh IP status', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing IP status:', error);
+        });
+}
+
+function updateIPDisplay(status) {
+    // Update IP addresses
+    document.getElementById('current-ip').textContent = status.current_ip || '--';
+    document.getElementById('last-known-ip').textContent = status.last_known_ip || '--';
+    
+    // Update status
+    const statusIcon = document.getElementById('status-icon');
+    const statusBadge = document.getElementById('ip-status-badge');
+    
+    if (status.current_ip && status.last_known_ip) {
+        if (status.is_changed) {
+            statusIcon.innerHTML = '<i class="bi bi-exclamation-triangle text-warning"></i>';
+            statusBadge.className = 'badge bg-warning';
+            statusBadge.textContent = 'IP Changed';
+        } else {
+            statusIcon.innerHTML = '<i class="bi bi-check-circle text-success"></i>';
+            statusBadge.className = 'badge bg-success';
+            statusBadge.textContent = 'Up to Date';
+        }
+    } else {
+        statusIcon.innerHTML = '<i class="bi bi-question-circle text-muted"></i>';
+        statusBadge.className = 'badge bg-secondary';
+        statusBadge.textContent = 'Unknown';
+    }
+    
+    // Update last check time
+    document.getElementById('last-check').textContent = new Date().toLocaleTimeString();
+}
+
+function checkIPNow() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Checking...';
+    
+    fetch('/api/ip/check', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                FunnyCommentator.showToast('IP check completed successfully', 'success');
+                refreshIPStatus();
+                loadIPHistory(); // Refresh history if IP changed
+            } else {
+                FunnyCommentator.showToast('IP check failed: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking IP:', error);
+            FunnyCommentator.showToast('Error checking IP', 'error');
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        });
+}
+
+function updateManualIP() {
+    const ipInput = document.getElementById('manual_ip');
+    const ipAddress = ipInput.value.trim();
+    
+    if (!ipAddress) {
+        FunnyCommentator.showToast('Please enter an IP address', 'warning');
+        return;
+    }
+    
+    // Basic IP validation
+    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    if (!ipRegex.test(ipAddress)) {
+        FunnyCommentator.showToast('Please enter a valid IP address', 'error');
+        return;
+    }
+    
+    fetch('/api/ip/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            ip_address: ipAddress
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            FunnyCommentator.showToast('IP address updated successfully', 'success');
+            ipInput.value = '';
+            refreshIPStatus();
+            loadIPHistory();
+        } else {
+            FunnyCommentator.showToast('Failed to update IP: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating IP:', error);
+        FunnyCommentator.showToast('Error updating IP address', 'error');
+    });
+}
+
+function saveConfiguration() {
+    const formData = {
+        check_interval_seconds: parseInt(document.getElementById('check_interval').value),
+        discord_notifications: document.getElementById('discord_notifications').checked,
+        auto_monitoring: document.getElementById('auto_monitoring').checked
+    };
+    
+    fetch('/api/ip/config', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            FunnyCommentator.showToast('Configuration saved successfully', 'success');
+            setupAutoRefresh(); // Update refresh interval
+        } else {
+            FunnyCommentator.showToast('Failed to save configuration: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving configuration:', error);
+        FunnyCommentator.showToast('Error saving configuration', 'error');
+    });
+}
+
+function loadIPHistory() {
+    document.getElementById('history-loading').style.display = 'block';
+    document.getElementById('history-table').style.display = 'none';
+    document.getElementById('history-empty').style.display = 'none';
+    
+    fetch('/api/ip/history?limit=20')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayHistory(data.history);
+            } else {
+                console.error('Failed to load history:', data.error);
+                document.getElementById('history-loading').style.display = 'none';
+                document.getElementById('history-empty').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading history:', error);
+            document.getElementById('history-loading').style.display = 'none';
+            document.getElementById('history-empty').style.display = 'block';
+        });
+}
+
+function displayHistory(history) {
+    const tbody = document.getElementById('history-tbody');
+    tbody.innerHTML = '';
+    
+    document.getElementById('history-loading').style.display = 'none';
+    
+    if (history.length === 0) {
+        document.getElementById('history-empty').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('history-table').style.display = 'block';
+    
+    history.forEach(record => {
+        const row = document.createElement('tr');
+        
+        // Format date
+        const date = new Date(record.changed_at);
+        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        
+        // Create IP change display
+        const ipChange = record.old_ip_address ? 
+            `${record.old_ip_address} → ${record.ip_address}` : 
+            `Initial: ${record.ip_address}`;
+        
+        // Type badge
+        const typeBadge = getTypeBadge(record.change_type);
+        
+        // Notification status
+        const notifiedIcon = record.notified ? 
+            '<i class="bi bi-check-circle text-success"></i>' : 
+            '<i class="bi bi-x-circle text-muted"></i>';
+        
+        row.innerHTML = `
+            <td>${formattedDate}</td>
+            <td><code>${ipChange}</code></td>
+            <td>${typeBadge}</td>
+            <td class="text-center">${notifiedIcon}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+function getTypeBadge(type) {
+    const badges = {
+        'auto': '<span class="badge bg-primary">Auto</span>',
+        'manual': '<span class="badge bg-warning">Manual</span>',
+        'startup': '<span class="badge bg-info">Startup</span>'
+    };
+    return badges[type] || '<span class="badge bg-secondary">Unknown</span>';
+}
+
+function refreshHistory() {
+    loadIPHistory();
+}
+
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    const text = element.textContent;
+    
+    if (text === '--') {
+        FunnyCommentator.showToast('No IP address to copy', 'warning');
+        return;
+    }
+    
+    navigator.clipboard.writeText(text).then(function() {
+        FunnyCommentator.showToast('IP address copied to clipboard', 'success');
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+        FunnyCommentator.showToast('Failed to copy to clipboard', 'error');
+    });
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+</script>
+{% endblock %}

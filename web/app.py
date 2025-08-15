@@ -802,6 +802,10 @@ class ConfigWebApp:
                         'uptime_formatted': process_manager.format_uptime(status.uptime_seconds) if status.uptime_seconds else None,
                         'status': status.status
                     },
+                    'system': {
+                        'cpu_percent': status.system_cpu_percent,
+                        'memory_percent': status.system_memory_percent
+                    },
                     'timestamp': datetime.now().isoformat()
                 })
             except Exception as e:
@@ -901,6 +905,195 @@ class ConfigWebApp:
                     'lines': lines,
                     'timestamp': datetime.now().isoformat()
                 })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                }), 500
+        
+        # IP Monitor routes
+        @self.app.route('/ip_monitor')
+        def ip_monitor():
+            """IP Monitor configuration and status page."""
+            config = self._load_config_safe()
+            if not config:
+                return redirect(url_for('index'))
+            
+            # Get IP monitor status
+            ip_status = self._get_ip_monitor_status()
+            return render_template('ip_monitor.html', config=config, ip_status=ip_status)
+        
+        @self.app.route('/api/ip/status')
+        def api_ip_status():
+            """API endpoint for IP monitor status."""
+            try:
+                status = self._get_ip_monitor_status()
+                return jsonify({
+                    'success': True,
+                    'status': status,
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                }), 500
+        
+        @self.app.route('/api/ip/config', methods=['GET', 'POST'])
+        def api_ip_config():
+            """API endpoint for IP monitor configuration."""
+            if request.method == 'GET':
+                try:
+                    config = self._load_config_safe()
+                    if not config:
+                        return jsonify({'error': 'Configuration not available'}), 500
+                    
+                    # Get IP monitor config from the Config object attributes
+                    ip_config = {
+                        'check_interval_seconds': getattr(config, 'ip_retry_seconds', 1800),
+                        'last_known_ip': getattr(config, 'previous_ip', None),
+                        'discord_notifications': True,  # Default value 
+                        'auto_monitoring': True  # Default value
+                    }
+                    return jsonify({
+                        'success': True,
+                        'config': ip_config,
+                        'timestamp': datetime.now().isoformat()
+                    })
+                except Exception as e:
+                    return jsonify({
+                        'success': False,
+                        'error': str(e)
+                    }), 500
+            
+            elif request.method == 'POST':
+                try:
+                    data = request.get_json()
+                    if not data:
+                        return jsonify({'error': 'No data provided'}), 400
+                    
+                    # Update IP monitor configuration
+                    self._update_ip_monitor_config(data)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': 'IP monitor configuration updated successfully',
+                        'timestamp': datetime.now().isoformat()
+                    })
+                except Exception as e:
+                    return jsonify({
+                        'success': False,
+                        'error': str(e),
+                        'timestamp': datetime.now().isoformat()
+                    }), 500
+        
+        @self.app.route('/api/ip/check', methods=['POST'])
+        def api_ip_check():
+            """API endpoint for manual IP check."""
+            try:
+                from src.ip_monitor_manager import IPMonitorManager
+                from src.database import DatabaseManager
+                
+                # Get dependencies
+                config = self._load_config_safe()
+                if not config:
+                    return jsonify({'error': 'Configuration not available'}), 500
+                
+                # Create managers
+                database_manager = DatabaseManager(
+                    config.db_path,
+                    {}  # server_tables - not needed for IP operations
+                )
+                
+                # Create IP monitor (Discord handled via HTTP API)
+                ip_manager = IPMonitorManager(self, database_manager, None)
+                
+                # Perform IP check
+                import asyncio
+                result = asyncio.run(ip_manager.perform_ip_check_and_notify())
+                
+                return jsonify({
+                    'success': True,
+                    'result': result,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                }), 500
+        
+        @self.app.route('/api/ip/history')
+        def api_ip_history():
+            """API endpoint for IP change history."""
+            try:
+                from src.database import DatabaseManager
+                
+                config = self._load_config_safe()
+                if not config:
+                    return jsonify({'error': 'Configuration not available'}), 500
+                
+                database_manager = DatabaseManager(
+                    config.db_path,
+                    {}  # server_tables - not needed for IP operations
+                )
+                
+                limit = request.args.get('limit', 50, type=int)
+                history = database_manager.get_ip_history(limit)
+                
+                return jsonify({
+                    'success': True,
+                    'history': history,
+                    'count': len(history),
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                }), 500
+        
+        @self.app.route('/api/ip/update', methods=['POST'])
+        def api_ip_update():
+            """API endpoint for manual IP update."""
+            try:
+                data = request.get_json()
+                if not data or 'ip_address' not in data:
+                    return jsonify({'error': 'IP address is required'}), 400
+                
+                from src.ip_monitor_manager import IPMonitorManager
+                from src.database import DatabaseManager
+                
+                # Get dependencies
+                config = self._load_config_safe()
+                if not config:
+                    return jsonify({'error': 'Configuration not available'}), 500
+                
+                # Create managers
+                database_manager = DatabaseManager(
+                    config.db_path,
+                    {}
+                )
+                
+                # Create IP monitor (Discord handled via HTTP API)  
+                ip_manager = IPMonitorManager(self, database_manager, None)
+                
+                # Update IP manually
+                success = ip_manager.update_last_known_ip(data['ip_address'], 'manual')
+                
+                return jsonify({
+                    'success': success,
+                    'message': 'IP address updated successfully' if success else 'No change detected',
+                    'new_ip': data['ip_address'],
+                    'timestamp': datetime.now().isoformat()
+                })
+                
             except Exception as e:
                 return jsonify({
                     'success': False,
@@ -1271,6 +1464,69 @@ class ConfigWebApp:
             config = json.load(f)
         
         config['scheduler'].update(scheduler_data)
+        
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=4)
+    
+    def _get_ip_monitor_status(self) -> Dict:
+        """Get current IP monitor status and configuration."""
+        try:
+            from src.ip_monitor_manager import IPMonitorManager
+            from src.database import DatabaseManager
+            
+            config = self._load_config_safe()
+            if not config:
+                return {'error': 'Configuration not available'}
+            
+            # Create managers
+            database_manager = DatabaseManager(
+                config.db_path,
+                {}
+            )
+            
+            # Create IP monitor (Discord handled via HTTP API)
+            ip_manager = IPMonitorManager(self, database_manager, None)
+            
+            # Get current status
+            import asyncio
+            current_ip = asyncio.run(ip_manager.check_current_ip())
+            last_known = ip_manager.get_last_known_ip()
+            monitor_config = ip_manager.get_monitor_config()
+            recent_history = ip_manager.get_ip_history(5)
+            
+            return {
+                'current_ip': current_ip,
+                'last_known_ip': last_known,
+                'config': monitor_config,
+                'recent_history': recent_history,
+                'is_changed': current_ip != last_known if current_ip else False,
+                'last_check': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logging.error(f"Error getting IP monitor status: {e}")
+            return {'error': str(e)}
+    
+    def _update_ip_monitor_config(self, config_data: Dict) -> None:
+        """Update IP monitor configuration in config file."""
+        config_path = self._get_config_path()
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        # Initialize ip_monitor section if it doesn't exist
+        if 'ip_monitor' not in config:
+            config['ip_monitor'] = {}
+        
+        # Update allowed fields
+        allowed_fields = [
+            'check_interval_seconds',
+            'discord_notifications', 
+            'auto_monitoring'
+        ]
+        
+        for field in allowed_fields:
+            if field in config_data:
+                config['ip_monitor'][field] = config_data[field]
         
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=4)

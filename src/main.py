@@ -16,7 +16,7 @@ from src.database import DatabaseManager
 from src.rcon_client import RconClient
 from src.discord_manager import DiscordManager
 from src.ollama_manager import OllamaManager
-from src.ip_monitor import IPMonitor
+from src.ip_monitor_manager import IPMonitorManager
 
 class Application:
     """Main application class coordinating all components."""
@@ -53,9 +53,10 @@ class Application:
         )
         
         # Create IP monitor (shared across all servers since they're on the same machine)
-        self.ip_monitor = IPMonitor(
-            self.config.ip_retry_seconds,
-            self.config.previous_ip
+        self.ip_monitor = IPMonitorManager(
+            self.config,
+            self.db,
+            self.discord
         )
         
         self.stop_event = asyncio.Event()
@@ -72,16 +73,47 @@ class Application:
             ]
         )
     
-    async def ip_change_callback(self, server_name: str, new_ip: str):
+    async def ip_change_callback(self, new_ip: str):
         """Handle IP address changes.
         
         Args:
-            server_name: Name of the server with IP change
             new_ip: The new IP address
         """
-        msg = f"Server '{server_name}' IP Address has changed: {new_ip}"
-        await self.discord.send_message(msg, self.config.channel_id_server_status)
-        logging.info(f"Sent IP change notification for {server_name}: {new_ip}")
+        # IPMonitorManager already handles Discord notifications internally
+        # Just log the change here
+        logging.info(f"IP Address changed to: {new_ip}")
+    
+    async def _monitor_ip_changes(self):
+        """Monitor IP address changes using IPMonitorManager."""
+        try:
+            # Get check interval from config
+            monitor_config = self.ip_monitor.get_monitor_config()
+            check_interval = monitor_config.get('check_interval_seconds', 3600)
+            
+            logging.info(f"Starting IP monitoring with {check_interval}s interval")
+            
+            while not self.stop_event.is_set():
+                try:
+                    result = await self.ip_monitor.perform_ip_check_and_notify()
+                    
+                    if result.get('success'):
+                        if result.get('changed'):
+                            await self.ip_change_callback(result['current_ip'])
+                    else:
+                        logging.error(f"IP check failed: {result.get('error', 'Unknown error')}")
+                        
+                except Exception as e:
+                    logging.error(f"Error during IP monitoring: {e}")
+                
+                # Wait for the next check or stop event
+                try:
+                    await asyncio.wait_for(self.stop_event.wait(), timeout=check_interval)
+                    break  # Stop event was set
+                except asyncio.TimeoutError:
+                    continue  # Timeout reached, continue monitoring
+                    
+        except Exception as e:
+            logging.error(f"IP monitoring task failed: {e}")
     
     async def process_cluster_logs(self, cluster_name: str):
         """Process logs for all servers in a cluster.
@@ -416,13 +448,7 @@ class Application:
             
             # Start IP monitoring (single monitor for all servers)
             ip_monitor_task = asyncio.create_task(
-                self.ip_monitor.monitor(
-                    lambda ip: asyncio.gather(*[
-                        self.ip_change_callback(name, ip) 
-                        for name in self.config.servers
-                    ]),
-                    self.stop_event
-                )
+                self._monitor_ip_changes()
             )
             
             # Start scheduler reload signal monitoring
