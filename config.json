@@ -67,7 +67,7 @@
         "path": "E:\\arkbot_memory.db"
     },
     "ip_monitor": {
-        "last_known_ip": "102.182.213.185",
+        "last_known_ip": "100.18.23.15",
         "check_interval_seconds": 3600,
         "discord_notifications": true,
         "auto_monitoring": true
