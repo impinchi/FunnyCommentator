@@ -72,3 +72,5 @@ config.json.backup
 !setup_credentials.py
 !src/credential_manager.py
 !CREDENTIAL_SECURITY.md
+
+*.pid
