@@ -47,6 +47,10 @@
     "ai": {
         "ollama_start_cmd": "ollama serve",
         "input_token_size": 16000,
+        "min_output_tokens": 64,
+        "max_output_tokens": 1024,
+        "safety_buffer": 48,
+        "tokenizer_model": "gpt-3.5-turbo",
         "timeout_seconds": 10800,
         "ollama_url": "http://localhost:11434/api/generate",
         "ollama_model": "deepseek-r1:70b",
@@ -67,7 +71,7 @@
         "path": "E:\\arkbot_memory.db"
     },
     "ip_monitor": {
-        "last_known_ip": "100.18.23.15",
+        "last_known_ip": "102.182.213.185",
         "check_interval_seconds": 3600,
         "discord_notifications": true,
         "auto_monitoring": true

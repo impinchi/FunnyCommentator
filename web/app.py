@@ -1219,6 +1219,10 @@ class ConfigWebApp:
             'timeout_seconds': int(form_data.get('timeout_seconds', 300)),
             'startup_timeout_seconds': int(form_data.get('startup_timeout_seconds', 300)),
             'input_token_size': int(form_data.get('input_token_size', 16000)),
+            'min_output_tokens': int(form_data.get('min_output_tokens', 64)),
+            'max_output_tokens': int(form_data.get('max_output_tokens', 512)),
+            'safety_buffer': int(form_data.get('safety_buffer', 48)),
+            'tokenizer_model': form_data.get('tokenizer_model', 'gpt-3.5-turbo').strip(),
             'ai_tone': form_data.get('ai_tone', '').strip() or "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes."
         }
     

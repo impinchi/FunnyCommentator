@@ -16,7 +16,7 @@ import logging
 import platform
 import os
 import sys
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 import json
 from pathlib import Path
 import base64

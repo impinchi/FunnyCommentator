@@ -3,7 +3,6 @@
 This module provides functionality to manage the main application process,
 including starting, stopping, and monitoring status.
 """
-import os
 import sys
 import time
 import signal

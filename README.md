@@ -58,7 +58,8 @@ For comprehensive documentation, configuration guides, and advanced features, se
 ### Essential Settings (via web interface)
 1. **Discord Bot Token** - For automated notifications
 2. **ARK Server Details** - RCON host, port, and password
-3. **AI Model Selection** - Choose your Ollama model
+3. **AI Model Selection** - Choose your Ollama model and configure token management
+4. **Token Management** - Configure context window size and output limits for optimal memory usage
 4. **Channel Configuration** - Discord channels for notifications
 
 ### Example Configuration
@@ -77,7 +78,12 @@ For comprehensive documentation, configuration guides, and advanced features, se
         }
     ],
     "ai": {
-        "ollama_model": "deepseek-r1:70b"
+        "ollama_model": "deepseek-r1:70b",
+        "input_token_size": 16000,
+        "min_output_tokens": 64,
+        "max_output_tokens": 512,
+        "safety_buffer": 48,
+        "tokenizer_model": "gpt-3.5-turbo"
     }
 }
 ```

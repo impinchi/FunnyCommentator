@@ -5,7 +5,6 @@ Discord notifications, and history tracking.
 Following PEP 257 for docstring conventions.
 """
 import os
-import asyncio
 import logging
 import requests
 from typing import Optional, Dict, List

@@ -131,7 +131,11 @@ class Config:
             self.ollama_model = ai["ollama_model"]
             self.ollama_start_cmd = ai["ollama_start_cmd"]
             self.ai_timeout_seconds = int(ai["timeout_seconds"])
-            self.input_token_size = int(ai.get("input_token_size", 16000))
+            self.input_token_size = int(ai.get("input_token_size", 4096))
+            self.min_output_tokens = int(ai.get("min_output_tokens", 64))
+            self.max_output_tokens = int(ai.get("max_output_tokens", 512))
+            self.safety_buffer = int(ai.get("safety_buffer", 48))
+            self.tokenizer_model = ai.get("tokenizer_model", "gpt-3.5-turbo")
             self.ollama_startup_timeout = int(ai.get("startup_timeout_seconds", 300))  # 5 minutes default
             self.ai_tone = ai.get("ai_tone", "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes.")
             
@@ -218,7 +222,13 @@ class Config:
                 "ollama_model": self.ollama_model,
                 "ollama_start_cmd": self.ollama_start_cmd,
                 "timeout_seconds": self.ai_timeout_seconds,
-                "input_token_size": self.input_token_size
+                "input_token_size": self.input_token_size,
+                "min_output_tokens": self.min_output_tokens,
+                "max_output_tokens": self.max_output_tokens,
+                "safety_buffer": self.safety_buffer,
+                "tokenizer_model": self.tokenizer_model,
+                "startup_timeout_seconds": self.ollama_startup_timeout,
+                "ai_tone": self.ai_tone
             },
             "servers": [
                 {

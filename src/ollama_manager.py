@@ -8,21 +8,38 @@ Following PEP 257 for docstring conventions.
 import logging
 import subprocess
 import requests
-import sys
 from typing import List
 import time
+import tiktoken
 
 class OllamaManager:
-    def __init__(self, url: str, model: str, start_cmd: str, timeout: int, startup_timeout: int = 300, input_token_size: int = 4096):
+    def __init__(self, url: str, model: str, start_cmd: str, timeout: int, 
+                 startup_timeout: int = 300, input_token_size: int = 4096,
+                 min_output_tokens: int = 64, max_output_tokens: int = 512,
+                 safety_buffer: int = 48, tokenizer_model: str = "gpt-3.5-turbo"):
         self.url = url
         self.model = model
         self.start_cmd = start_cmd
         self.timeout = timeout
         self.startup_timeout = startup_timeout
-        self.input_token_size = input_token_size  # Store the token size limit
+        self.input_token_size = input_token_size 
+        self.min_output_tokens = min_output_tokens
+        self.max_output_tokens = max_output_tokens
+        self.safety_buffer = safety_buffer
+        self.tokenizer_model = tokenizer_model
         self._shutdown_requested = False
         
-        logging.info(f"OllamaManager initialized with model '{model}' and context window limited to {input_token_size} tokens")
+        # Initialize tiktoken encoder
+        try:
+            self.tokenizer = tiktoken.encoding_for_model(tokenizer_model)
+            logging.info(f"Using tiktoken with model '{tokenizer_model}' for token counting")
+        except Exception as e:
+            logging.warning(f"Failed to load tiktoken for model '{tokenizer_model}': {e}")
+            logging.info("Falling back to character-based token estimation")
+            self.tokenizer = None
+        
+        logging.info(f"OllamaManager initialized model='{model}' ctx={input_token_size} "
+                     f"out∈[{min_output_tokens},{max_output_tokens}] buffer={safety_buffer}")
         
         # Create persistent session for connection pooling
         self.session = requests.Session()
@@ -34,6 +51,65 @@ class OllamaManager:
         )
         self.session.mount('http://', adapter)
         self.session.mount('https://', adapter)
+
+    def _estimate_prompt_tokens(self, text: str) -> int:
+        """Accurate token count using tiktoken or fallback to character estimation.
+        
+        Uses tiktoken encoder for precise token counting when available,
+        falls back to simple heuristic if tiktoken fails to load.
+        
+        Args:
+            text: The prompt text to count tokens for
+            
+        Returns:
+            Number of tokens in the text
+        """
+        if not text:
+            return 0
+            
+        if self.tokenizer:
+            try:
+                return len(self.tokenizer.encode(text))
+            except Exception as e:
+                logging.warning(f"Tiktoken encoding failed: {e}, falling back to character estimation")
+                
+        # Fallback: conservative estimate of ~4 characters per token
+        return max(1, len(text) // 4)
+
+    def _compute_num_predict(self, prompt: str) -> int:
+        """Calculate optimal num_predict based on available context space.
+        
+        Uses dynamic leftover approach: allocate remaining context window space
+        to output generation while respecting min/max bounds and safety buffer.
+        
+        Args:
+            prompt: The full prompt text that will be sent
+            
+        Returns:
+            Number of tokens to allocate for generation (num_predict)
+        """
+        prompt_tokens = self._estimate_prompt_tokens(prompt)
+        
+        # Calculate remaining capacity after prompt and safety buffer
+        remaining = self.input_token_size - prompt_tokens - self.safety_buffer
+        
+        if remaining < self.min_output_tokens:
+            # Fallback: use minimum but never exceed a reasonable fraction of context
+            candidate = max(8, min(self.min_output_tokens, self.input_token_size // 8))
+            logging.warning(f"Limited context space: prompt={prompt_tokens}, "
+                          f"remaining={remaining}, using fallback={candidate}")
+        else:
+            # Normal case: use remaining space up to max_output_tokens
+            candidate = min(remaining, self.max_output_tokens)
+            
+        # Ensure we never go below absolute minimum
+        result = max(self.min_output_tokens, candidate)
+        
+        logging.debug(f"Token allocation: prompt={prompt_tokens}, "
+                     f"ctx={self.input_token_size}, buffer={self.safety_buffer}, "
+                     f"num_predict={result}")
+        
+        return result
 
     def ensure_server_running(self, initial_prompt: str) -> bool:
         """Ensure Ollama server is running and start if needed."""
@@ -48,7 +124,8 @@ class OllamaManager:
                     "prompt": initial_prompt, 
                     "stream": False,
                     "options": {
-                        "num_ctx": self.input_token_size
+                        "num_ctx": self.input_token_size,
+                        "num_predict": self._compute_num_predict(initial_prompt)
                     }
                 },
                 timeout=self.startup_timeout
@@ -85,7 +162,8 @@ class OllamaManager:
                             "prompt": initial_prompt, 
                             "stream": False,
                             "options": {
-                                "num_ctx": self.input_token_size
+                                "num_ctx": self.input_token_size,
+                                "num_predict": self._compute_num_predict(initial_prompt)
                             }
                         },
                         timeout=self.startup_timeout/2
@@ -146,14 +224,18 @@ class OllamaManager:
 
         try:
             logging.debug(f"Using Ollama with context window limited to {self.input_token_size} tokens")
+            full_prompt = context + "\n".join(log_lines)
+            num_predict = self._compute_num_predict(full_prompt)
+            
             response = self.session.post(
                 self.url,
                 json={
                     "model": self.model,
-                    "prompt": context + "\n".join(log_lines),
+                    "prompt": full_prompt,
                     "stream": False,
                     "options": {
-                        "num_ctx": self.input_token_size  # Use configured token size to limit memory
+                        "num_ctx": self.input_token_size,
+                        "num_predict": num_predict
                     }
                 },
                 timeout=self.timeout

@@ -191,10 +191,31 @@ python web/app.py
         "ollama_url": "http://localhost:11434/api/generate",
         "ai_tone": "funny and sarcastic",
         "input_token_size": 16000,
-        "timeout_seconds": 10800
+        "min_output_tokens": 64,
+        "max_output_tokens": 512,
+        "safety_buffer": 48,
+        "tokenizer_model": "gpt-3.5-turbo",
+        "timeout_seconds": 10800,
+        "startup_timeout_seconds": 11800,
+        "ollama_start_cmd": "ollama serve"
     }
 }
 ```
+
+**AI Token Management Explanation:**
+- `input_token_size`: Total context window size (input + output tokens)
+- `min_output_tokens`: Minimum guaranteed response length (64 tokens)
+- `max_output_tokens`: Maximum response length allowed (512 tokens) 
+- `safety_buffer`: Reserved tokens to prevent context overflow (48 tokens)
+- `tokenizer_model`: Model used for accurate token counting (gpt-3.5-turbo, gpt-4, etc.)
+
+The system uses **dynamic token allocation** - it automatically calculates the optimal output token limit based on:
+1. Actual prompt size (using tiktoken for accuracy)
+2. Available context window space 
+3. Safety buffer to prevent overflows
+4. Configured min/max bounds
+
+This ensures efficient memory usage while preventing out-of-memory errors.
 
 **4. IP Monitoring Configuration:**
 ```json
