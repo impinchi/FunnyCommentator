@@ -46,9 +46,9 @@
     ],
     "ai": {
         "ollama_start_cmd": "ollama serve",
-        "input_token_size": 16000,
+        "input_token_size": 12000,
         "min_output_tokens": 64,
-        "max_output_tokens": 1024,
+        "max_output_tokens": 4024,
         "safety_buffer": 48,
         "tokenizer_model": "gpt-3.5-turbo",
         "timeout_seconds": 10800,

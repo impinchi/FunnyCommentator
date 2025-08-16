@@ -24,7 +24,7 @@ A comprehensive administrative platform for ARK: Survival Evolved servers featur
 ### Installation
 ```bash
 # 1. Clone or download FunnyCommentator
-git clone <repository-url>
+git clone https://github.com/impinchi/FunnyCommentator
 cd FunnyCommentator
 
 # 2. Install dependencies
