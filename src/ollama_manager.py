@@ -16,7 +16,8 @@ class OllamaManager:
     def __init__(self, url: str, model: str, start_cmd: str, timeout: int, 
                  startup_timeout: int = 300, input_token_size: int = 4096,
                  min_output_tokens: int = 64, max_output_tokens: int = 512,
-                 safety_buffer: int = 48, tokenizer_model: str = "gpt-3.5-turbo"):
+                 safety_buffer: int = 48, tokenizer_model: str = "gpt-3.5-turbo",
+                 enable_reasoning: bool = False):
         self.url = url
         self.model = model
         self.start_cmd = start_cmd
@@ -27,6 +28,7 @@ class OllamaManager:
         self.max_output_tokens = max_output_tokens
         self.safety_buffer = safety_buffer
         self.tokenizer_model = tokenizer_model
+        self.enable_reasoning = enable_reasoning
         self._shutdown_requested = False
         
         # Initialize tiktoken encoder
@@ -227,16 +229,32 @@ class OllamaManager:
             full_prompt = context + "\n".join(log_lines)
             num_predict = self._compute_num_predict(full_prompt)
             
+            # Enable thinking mode for supported models (like DeepSeek-R1)
+            # This will be ignored by models that don't support it
+            options = {
+                "num_ctx": self.input_token_size,
+                "num_predict": num_predict,
+                "use_mmap": True,  # Memory optimization
+                "num_thread": -1,  # Use all available threads
+                "temperature": 0.8,        # Good creativity
+                "tfs_z": 0.95,            # Remove unlikely tokens
+                "repeat_penalty": 1.15,    # Avoid repetitive jokes
+            }
+            
+            # Add thinking mode if enabled in config
+            if self.enable_reasoning:
+                options["reasoning"] = True
+                logging.debug(f"Enabled reasoning mode for model: {self.model}")
+            else:
+                logging.debug(f"Reasoning mode disabled for model: {self.model}")
+            
             response = self.session.post(
                 self.url,
                 json={
                     "model": self.model,
                     "prompt": full_prompt,
                     "stream": False,
-                    "options": {
-                        "num_ctx": self.input_token_size,
-                        "num_predict": num_predict
-                    }
+                    "options": options
                 },
                 timeout=self.timeout
             )

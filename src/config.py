@@ -136,6 +136,7 @@ class Config:
             self.max_output_tokens = int(ai.get("max_output_tokens", 512))
             self.safety_buffer = int(ai.get("safety_buffer", 48))
             self.tokenizer_model = ai.get("tokenizer_model", "gpt-3.5-turbo")
+            self.enable_reasoning = ai.get("enable_reasoning", False)
             self.ollama_startup_timeout = int(ai.get("startup_timeout_seconds", 300))  # 5 minutes default
             self.ai_tone = ai.get("ai_tone", "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes.")
             

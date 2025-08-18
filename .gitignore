@@ -36,7 +36,6 @@ ENV/
 # Logs
 *.log
 logs/
-aiLogsResponder.log
 
 # Database
 *.db

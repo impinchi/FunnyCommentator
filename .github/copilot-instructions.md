@@ -35,13 +35,8 @@ Platform Support Requirements:
 - Windows: Windows Credential Manager integration
 - macOS: Keychain Access integration  
 - Linux: Secret Service API (GNOME Keyring, KDE Wallet)
-- Fallback: AES-256 encrypted file storage with PBKDF2 key derivation
-- Container/CI: Encrypted credential import/export functionality
+
 
 Security Implementation:
 - Use system keyring as primary credential store
-- Implement encrypted fallback with master password
-- Provide credential rotation and backup features
-- Log all credential access for audit trails
 - Validate backend availability before operations
-- Support enterprise deployment scenarios

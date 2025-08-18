@@ -107,6 +107,15 @@
                             </select>
                             <div class="form-text">Tokenizer for counting tokens</div>
                         </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="enable_reasoning" class="form-label">Enable Reasoning Mode</label>
+                            <select class="form-control" id="enable_reasoning" name="enable_reasoning">
+                                <option value="false" {{ 'selected' if config and not config.enable_reasoning else '' }}>Disabled</option>
+                                <option value="true" {{ 'selected' if config and config.enable_reasoning else '' }}>Enabled</option>
+                            </select>
+                            <div class="form-text">Enable thinking/reasoning tokens (for supported models like DeepSeek-R1)</div>
+                        </div>
                     </div>
                     
                     <div class="mb-3">

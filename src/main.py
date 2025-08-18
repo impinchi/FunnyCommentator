@@ -64,11 +64,17 @@ class Application:
     
     def setup_logging(self):
         """Set up application logging."""
+        # Ensure logs directory exists
+        import os
+        logs_dir = "logs"
+        if not os.path.exists(logs_dir):
+            os.makedirs(logs_dir)
+            
         logging.basicConfig(
             level=self.config.log_level,
             format="%(asctime)s [%(levelname)s] %(message)s",
             handlers=[
-                logging.FileHandler("aiLogsResponder.log", encoding="utf-8"),
+                logging.FileHandler(os.path.join(logs_dir, "application.log"), encoding="utf-8"),
                 logging.StreamHandler()
             ]
         )

@@ -46,16 +46,17 @@
     ],
     "ai": {
         "ollama_start_cmd": "ollama serve",
-        "input_token_size": 12000,
+        "input_token_size": 20000, 
         "min_output_tokens": 64,
-        "max_output_tokens": 4024,
+        "max_output_tokens": 8096,
         "safety_buffer": 48,
         "tokenizer_model": "gpt-3.5-turbo",
+        "enable_reasoning": true,
         "timeout_seconds": 10800,
         "ollama_url": "http://localhost:11434/api/generate",
         "ollama_model": "deepseek-r1:70b",
         "startup_timeout_seconds": 11800,
-        "ai_tone": "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes."
+        "ai_tone": "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes. Swearing is allowed!"
     },
     "rcon": {
         "timeout_seconds": 15,

@@ -1223,6 +1223,7 @@ class ConfigWebApp:
             'max_output_tokens': int(form_data.get('max_output_tokens', 512)),
             'safety_buffer': int(form_data.get('safety_buffer', 48)),
             'tokenizer_model': form_data.get('tokenizer_model', 'gpt-3.5-turbo').strip(),
+            'enable_reasoning': form_data.get('enable_reasoning', 'false').lower() == 'true',
             'ai_tone': form_data.get('ai_tone', '').strip() or "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes."
         }
     
