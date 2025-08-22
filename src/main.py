@@ -42,7 +42,7 @@ class Application:
         }
         
         # Create shared components
-        self.discord = DiscordManager(self.config.discord_token)
+        self.discord = DiscordManager(self.config.discord_token, use_client=False)
         self.ollama = OllamaManager(
             self.config.ollama_url,
             self.config.ollama_model,
@@ -426,12 +426,7 @@ class Application:
                     except Exception as e:
                         logging.error(f"Error closing RCON client {name}: {e}")
 
-            # Close Discord connection
-            if hasattr(self, 'discord') and self.discord and self.discord.client:
-                try:
-                    await self.discord.client.close()
-                except Exception as e:
-                    logging.error(f"Error closing Discord client: {e}")
+            # Note: No Discord client cleanup needed in HTTP-only mode
 
             # Close database connections
             if hasattr(self, 'db') and self.db:
@@ -460,12 +455,11 @@ class Application:
             # Start scheduler reload signal monitoring
             reload_monitor_task = asyncio.create_task(self._monitor_reload_signals())
             
-            # Run Discord client
+            # Since we're using HTTP-only Discord mode, just wait for shutdown signal
+            logging.info("Application started with HTTP-only Discord mode")
             try:
-                await self.discord.client.start(self.config.discord_token)
+                await self.stop_event.wait()
             finally:
-                self.stop_event.set()
-                
                 # Cancel and wait for all background tasks
                 for task in [ip_monitor_task, reload_monitor_task]:
                     if not task.done():
@@ -474,9 +468,8 @@ class Application:
                             await task
                         except asyncio.CancelledError:
                             pass
-                            
-                await self.discord.client.close()
-                logging.info("Bot shutdown complete.")
+                
+                logging.info("Application shutdown complete.")
                 
         except KeyboardInterrupt:
             self.handle_shutdown()
