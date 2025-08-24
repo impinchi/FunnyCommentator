@@ -3,6 +3,7 @@
 This module handles all Discord-related operations including message sending
 and client setup. Following PEP 257 for docstring conventions.
 """
+import asyncio
 import logging
 from typing import List, Dict, Optional
 import discord
@@ -31,7 +32,7 @@ class DiscordManager:
     
     @staticmethod
     def split_text_on_word_boundaries(text: str, max_length: int = 2000) -> List[str]:
-        """Split text into chunks that respect Discord's message length limit.
+        """Split text into chunks that respect Discord's message length limit and preserve formatting.
         
         Args:
             text: Text to split
@@ -40,21 +41,49 @@ class DiscordManager:
         Returns:
             List of text chunks
         """
+        if len(text) <= max_length:
+            return [text]
+            
         chunks = []
-        while len(text) > max_length:
-            # Find the last space within the limit
-            split_at = text.rfind(' ', 0, max_length)
-            if split_at == -1:
-                # No space found, force split at max_length
-                split_at = max_length
-            chunks.append(text[:split_at])
-            # Remove only a single leading space if present
-            if text[split_at:split_at+1] == ' ':
-                text = text[split_at+1:]
-            else:
-                text = text[split_at:]
-        if text:
-            chunks.append(text)
+        remaining_text = text
+        
+        while len(remaining_text) > max_length:
+            # Try to find a good split point
+            split_at = max_length
+            
+            # Look for natural break points in order of preference
+            break_points = [
+                ('\n\n', -2),  # Paragraph breaks
+                ('\n', -1),    # Line breaks
+                ('. ', 0),     # Sentence endings
+                ('! ', 0),     # Exclamation endings
+                ('? ', 0),     # Question endings
+                (', ', 0),     # Comma breaks
+                (' ', 0),      # Word boundaries
+            ]
+            
+            for delimiter, offset in break_points:
+                pos = remaining_text.rfind(delimiter, 0, max_length)
+                if pos != -1:
+                    split_at = pos + len(delimiter) + offset
+                    break
+            
+            # Extract the chunk
+            chunk = remaining_text[:split_at].strip()
+            if chunk:
+                chunks.append(chunk)
+                
+            # Prepare remaining text
+            remaining_text = remaining_text[split_at:].lstrip()
+            
+            # Safety check to prevent infinite loop
+            if not remaining_text or len(remaining_text) == len(text):
+                break
+                
+        # Add the final chunk if there's remaining text
+        if remaining_text.strip():
+            chunks.append(remaining_text.strip())
+            
         return chunks
     
     async def send_message_http(self, content: str, channel_id: int, embed: Optional[Dict] = None) -> bool:
@@ -74,25 +103,45 @@ class DiscordManager:
             "Content-Type": "application/json"
         }
         
-        payload = {"content": content}
-        if embed:
-            payload["embeds"] = [embed]
+        # Split long messages into chunks
+        chunks = self.split_text_on_word_boundaries(content, 2000)
         
-        logging.info(f"Sending Discord message via HTTP to channel {channel_id}")
-        logging.debug(f"Payload: {payload}")
+        logging.info(f"Sending {len(chunks)} Discord message chunk(s) via HTTP to channel {channel_id}")
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=payload, headers=headers) as response:
-                    response_text = await response.text()
-                    logging.debug(f"Discord API response {response.status}: {response_text}")
+                success_count = 0
+                
+                for i, chunk in enumerate(chunks):
+                    payload = {"content": chunk}
                     
-                    if response.status == 200:
-                        logging.info(f"Successfully sent Discord message to channel {channel_id}")
-                        return True
-                    else:
-                        logging.error(f"Discord API error {response.status}: {response_text}")
-                        return False
+                    # Only add embed to the first message
+                    if i == 0 and embed:
+                        payload["embeds"] = [embed]
+                    
+                    logging.debug(f"Sending chunk {i+1}/{len(chunks)}: {len(chunk)} chars")
+                    
+                    async with session.post(url, json=payload, headers=headers) as response:
+                        response_text = await response.text()
+                        
+                        if response.status == 200:
+                            success_count += 1
+                            logging.debug(f"Successfully sent chunk {i+1}/{len(chunks)}")
+                        else:
+                            logging.error(f"Discord API error for chunk {i+1}: {response.status} - {response_text}")
+                            return False
+                    
+                    # Rate limiting: small delay between chunks
+                    if i < len(chunks) - 1:  # Don't delay after the last chunk
+                        await asyncio.sleep(0.5)
+                
+                if success_count == len(chunks):
+                    logging.info(f"Successfully sent all {len(chunks)} chunks to channel {channel_id}")
+                    return True
+                else:
+                    logging.error(f"Only {success_count}/{len(chunks)} chunks sent successfully")
+                    return False
+                    
         except Exception as e:
             logging.error(f"Error sending Discord message via HTTP: {e}")
             return False

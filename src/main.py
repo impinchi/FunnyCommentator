@@ -49,7 +49,12 @@ class Application:
             self.config.ollama_start_cmd,
             self.config.ai_timeout_seconds,
             startup_timeout=self.config.ollama_startup_timeout,
-            input_token_size=self.config.input_token_size
+            input_token_size=self.config.input_token_size,
+            min_output_tokens=getattr(self.config, 'min_output_tokens', 64),
+            max_output_tokens=getattr(self.config, 'max_output_tokens', 8096),
+            safety_buffer=getattr(self.config, 'safety_buffer', 48),
+            tokenizer_model=getattr(self.config, 'tokenizer_model', 'gpt-3.5-turbo'),
+            enable_reasoning=getattr(self.config, 'enable_reasoning', False)
         )
         
         # Create IP monitor (shared across all servers since they're on the same machine)
@@ -214,7 +219,7 @@ class Application:
             summary = await asyncio.to_thread(
                 self.ollama.get_funny_summary,
                 lines,
-                f"{context}\n{history_context}"
+                f"{context}\n{history_context}\n"
             )
             
             # Save and send the summary

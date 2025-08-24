@@ -259,8 +259,67 @@ class OllamaManager:
                 timeout=self.timeout
             )
             response.raise_for_status()
-            return response.json()["response"].strip()
+            raw_response = response.json()["response"].strip()
+            
+            # Post-process response to handle reasoning tags
+            cleaned_response = self._clean_reasoning_response(raw_response)
+            
+            logging.debug(f"Response length: {len(cleaned_response)} chars")
+            return cleaned_response
             
         except Exception as e:
             logging.error(f"Ollama API error: {e}")
             return f"[AI Error: {e}]"
+    
+    def _clean_reasoning_response(self, response: str) -> str:
+        """Clean up reasoning response, handling incomplete think tags.
+        
+        Args:
+            response: Raw response from the model
+            
+        Returns:
+            Cleaned response with proper tag handling
+        """
+        if not self.enable_reasoning:
+            return response
+            
+        # If response contains unclosed <think> tags, try to clean them up
+        if "<think>" in response:
+            # Count open and close tags
+            open_tags = response.count("<think>")
+            close_tags = response.count("</think>")
+            
+            if open_tags > close_tags:
+                # Find the last <think> tag and everything after it
+                last_think_pos = response.rfind("<think>")
+                if last_think_pos != -1:
+                    # Find if there's content after the thinking section
+                    think_content = response[last_think_pos:]
+                    
+                    # Look for actual response content after reasoning
+                    lines = think_content.split('\n')
+                    actual_response_lines = []
+                    in_thinking = True
+                    
+                    for line in lines:
+                        if "</think>" in line:
+                            in_thinking = False
+                            # Take content after the closing tag
+                            after_think = line.split("</think>", 1)
+                            if len(after_think) > 1 and after_think[1].strip():
+                                actual_response_lines.append(after_think[1].strip())
+                        elif not in_thinking:
+                            actual_response_lines.append(line)
+                    
+                    # If we found actual response content, use it
+                    if actual_response_lines:
+                        cleaned = '\n'.join(actual_response_lines).strip()
+                        if cleaned:
+                            logging.debug("Extracted response from after thinking tags")
+                            return cleaned
+                    
+                    # Otherwise, remove the incomplete thinking section
+                    logging.warning("Removing incomplete <think> section due to truncation")
+                    return response[:last_think_pos].strip()
+        
+        return response
