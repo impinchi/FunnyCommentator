@@ -73,20 +73,16 @@ class CredentialManager:
             self.FALLBACK_DIR.mkdir(parents=True, exist_ok=True)
     
     def _setup_audit_logging(self) -> None:
-        """Setup audit logging for enterprise compliance."""
-        audit_log_dir = Path.home() / ".funnycommentator" / "audit"
-        audit_log_dir.mkdir(parents=True, exist_ok=True)
+        """Setup audit logging for enterprise compliance.
         
-        audit_logger = logging.getLogger('credential_audit')
-        audit_handler = logging.FileHandler(audit_log_dir / "credential_access.log")
-        audit_formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s - User: %(username)s - Platform: %(platform)s',
-            defaults={'username': getpass.getuser(), 'platform': self.PLATFORM}
-        )
-        audit_handler.setFormatter(audit_formatter)
-        audit_logger.addHandler(audit_handler)
-        audit_logger.setLevel(logging.INFO)
-        self.audit_logger = audit_logger
+        Note: Using main application logger instead of separate audit log
+        to comply with centralized logging requirements.
+        """
+        # Use the main application logger instead of creating separate audit log
+        self.audit_logger = logging.getLogger('credential_audit')
+        
+        # Log audit setup to main application log
+        logging.info("Credential audit logging initialized - using main application log")
     
     def _log_audit_event(self, event: str, key: str, success: bool = True) -> None:
         """Log credential access events for audit purposes.

@@ -17,6 +17,7 @@ from src.rcon_client import RconClient
 from src.discord_manager import DiscordManager
 from src.ollama_manager import OllamaManager
 from src.ip_monitor_manager import IPMonitorManager
+from src.log_manager import LogManager
 
 class Application:
     """Main application class coordinating all components."""
@@ -24,6 +25,19 @@ class Application:
     def __init__(self):
         """Initialize application and its components."""
         self.config = Config()
+        
+        # Initialize log management first (before logging setup)
+        self.log_manager = LogManager(
+            logs_directory="logs",
+            retention_days=self.config.log_retention_days,
+            max_size_mb=self.config.log_max_size_mb
+        )
+        
+        # Clear logs on startup if configured to do so
+        if self.config.log_clear_on_startup:
+            self.log_manager.clear_logs_on_startup()
+        
+        # Set up logging after log cleanup
         self.setup_logging()
         
         # Create database manager with tables for each server
@@ -155,12 +169,22 @@ class Application:
                 logging.info(f"No logs to summarize for cluster {cluster_name}")
                 return
 
-            # Get previous cluster summaries
+            # Get previous cluster summaries for context (to avoid repetition)
             cluster_summaries = self.db.get_cluster_summaries_up_to_token_limit(
                 cluster_name, 
                 self.config.input_token_size
             )
-            history_context = "\n".join(cluster_summaries + ["\nAbove are my previous responses for this cluster."])
+            
+            # Create history context for AI (not to be included in response)
+            history_context = ""
+            if cluster_summaries:
+                history_context = (
+                    "\n\nPREVIOUS RESPONSES CONTEXT (do not repeat this content):\n" +
+                    "\n".join(cluster_summaries) + 
+                    "\n\nPlease avoid repeating similar jokes or observations from the above previous responses."
+                )
+            
+            logging.debug(f"Using {len(cluster_summaries)} previous summaries for context")
             
             # Create cluster context
             combined_context = (
@@ -168,6 +192,9 @@ class Application:
                 + "\n".join(cluster_context)
                 + f"\n{history_context}"
             )
+            
+            logging.info(f"Generating AI summary for cluster {cluster_name} with {len(all_lines)} total log lines")
+            logging.debug(f"Context for cluster {cluster_name}: {len(combined_context)} chars")
             
             # Generate cluster summary
             cluster_summary = await asyncio.to_thread(
@@ -177,13 +204,24 @@ class Application:
             )
             
             # Save and send cluster summary
+            logging.debug(f"Saving cluster summary to database for {cluster_name}")
             self.db.save_cluster_summary(cluster_name, cluster_summary)
+            
             cluster_header = f"=== {cluster_name} Cluster Summary ===\n"
-            await self.discord.send_message(
-                cluster_header + cluster_summary,
+            final_message = cluster_header + cluster_summary
+            
+            logging.info(f"Sending cluster summary for {cluster_name} to Discord channel {self.config.channel_id_ai}")
+            logging.debug(f"Final message length: {len(final_message)} chars")
+            
+            success = await self.discord.send_message(
+                final_message,
                 self.config.channel_id_ai
             )
-            logging.info(f"Sent cluster summary for {cluster_name} to Discord.")
+            
+            if success:
+                logging.info(f"Successfully sent cluster summary for {cluster_name} to Discord.")
+            else:
+                logging.error(f"Failed to send cluster summary for {cluster_name} to Discord.")
             
         except Exception as e:
             logging.error(f"Cluster summary job error for {cluster_name}: {e}", exc_info=True)
@@ -208,28 +246,53 @@ class Application:
             # Prepend server context to the logs
             context = server_config.get_context_prompt(self.config.ai_tone)
             
-            # Get previous summaries for this server
+            # Get previous summaries for this server (for context to avoid repetition)
             summaries = self.db.get_summaries_up_to_token_limit(
                 server_name, 
                 self.config.input_token_size
             )
-            history_context = "\n".join(summaries + ["\nAbove are my previous responses for this server."])
+            
+            # Create history context for AI (not to be included in response)
+            history_context = ""
+            if summaries:
+                history_context = (
+                    "\n\nPREVIOUS RESPONSES CONTEXT (do not repeat this content):\n" +
+                    "\n".join(summaries) + 
+                    "\n\nPlease avoid repeating similar jokes or observations from the above previous responses."
+                )
+            
+            logging.debug(f"Using {len(summaries)} previous summaries for context for server {server_name}")
+            
+            final_context = f"{context}{history_context}\n"
+            logging.info(f"Generating AI summary for server {server_name} with {len(lines)} log lines")
+            logging.debug(f"Context for server {server_name}: {len(final_context)} chars")
             
             # Generate summary with server-specific context
             summary = await asyncio.to_thread(
                 self.ollama.get_funny_summary,
                 lines,
-                f"{context}\n{history_context}\n"
+                final_context
             )
             
             # Save and send the summary
+            logging.debug(f"Saving summary to database for {server_name}")
             self.db.save_summary(server_name, summary)
+            
             server_header = f"=== {server_name} ({server_config.map_name}) Summary ===\n"
-            await self.discord.send_message(
-                server_header + summary,
+            final_message = server_header + summary
+            
+            logging.info(f"Sending daily summary for {server_name} to Discord channel {self.config.channel_id_ai}")
+            logging.debug(f"Final message length: {len(final_message)} chars")
+            
+            success = await self.discord.send_message(
+                final_message,
                 self.config.channel_id_ai
             )
-            logging.info(f"Sent daily summary for {server_name} to Discord.")
+            
+            if success:
+                logging.info(f"Successfully sent daily summary for {server_name} to Discord.")
+            else:
+                logging.error(f"Failed to send daily summary for {server_name} to Discord.")
             
         except Exception as e:
             logging.error(f"RCON summary job error for {server_name}: {e}", exc_info=True)
@@ -494,6 +557,30 @@ class Application:
             logging.debug("Reload signal monitor cancelled")
         except Exception as e:
             logging.error(f"Error in reload signal monitor: {e}")
+    
+    def get_log_status(self) -> dict:
+        """Get current log file status and sizes.
+        
+        Returns:
+            Dictionary with log file information
+        """
+        return {
+            "sizes": self.log_manager.get_log_sizes(),
+            "files_needing_rotation": self.log_manager.check_log_rotation_needed(),
+            "retention_days": self.log_manager.retention_days,
+            "max_size_mb": self.log_manager.max_size_mb
+        }
+    
+    def manual_log_cleanup(self, force_clear: bool = False) -> dict:
+        """Manually trigger log cleanup.
+        
+        Args:
+            force_clear: If True, clear all logs regardless of size
+            
+        Returns:
+            Dictionary with cleanup results
+        """
+        return self.log_manager.manual_cleanup(force_clear)
 
 def main():
     """Application entry point."""

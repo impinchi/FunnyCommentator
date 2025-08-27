@@ -99,14 +99,15 @@ class DiscordManager:
         """
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
         headers = {
-            "Authorization": f"Bot {self.token}",
+            "Authorization": f"Bot {self.token[:20]}...{self.token[-5:]}",  # Mask token in logs
             "Content-Type": "application/json"
         }
         
         # Split long messages into chunks
         chunks = self.split_text_on_word_boundaries(content, 2000)
         
-        logging.info(f"Sending {len(chunks)} Discord message chunk(s) via HTTP to channel {channel_id}")
+        logging.info(f"Preparing to send {len(chunks)} Discord message chunk(s) via HTTP to channel {channel_id}")
+        logging.debug(f"Total content length: {len(content)} chars, Split into chunks: {[len(chunk) for chunk in chunks]}")
         
         try:
             async with aiohttp.ClientSession() as session:
@@ -118,15 +119,17 @@ class DiscordManager:
                     # Only add embed to the first message
                     if i == 0 and embed:
                         payload["embeds"] = [embed]
+                        logging.debug(f"Adding embed to first chunk: {embed.get('title', 'No title') if embed else 'None'}")
                     
                     logging.debug(f"Sending chunk {i+1}/{len(chunks)}: {len(chunk)} chars")
+                    logging.debug(f"Chunk content preview: {chunk[:100]}{'...' if len(chunk) > 100 else ''}")
                     
                     async with session.post(url, json=payload, headers=headers) as response:
                         response_text = await response.text()
                         
                         if response.status == 200:
                             success_count += 1
-                            logging.debug(f"Successfully sent chunk {i+1}/{len(chunks)}")
+                            logging.info(f"Successfully sent Discord chunk {i+1}/{len(chunks)} to channel {channel_id}")
                         else:
                             logging.error(f"Discord API error for chunk {i+1}: {response.status} - {response_text}")
                             return False
@@ -157,12 +160,17 @@ class DiscordManager:
         Returns:
             True if successful, False otherwise
         """
+        logging.info(f"Discord send_message called - Channel: {channel_id}, Content length: {len(content)} chars")
+        logging.debug(f"Content preview: {content[:200]}{'...' if len(content) > 200 else ''}")
+        
         # If no client is available or we're in HTTP mode, use HTTP API
         if not self.use_client or not self.client:
+            logging.debug("Using HTTP API mode for Discord message")
             # Convert Discord embed object to dict if needed
             embed_dict = None
             if embed:
                 if isinstance(embed, discord.Embed):
+                    logging.debug("Converting Discord Embed object to dict for HTTP API")
                     # Convert Discord Embed to dict format for HTTP API
                     embed_dict = {
                         "title": embed.title or "",

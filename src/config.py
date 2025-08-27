@@ -201,6 +201,9 @@ class Config:
             # Logging Configuration
             logging_config = config.get("logging", {})
             self.log_level = logging_config.get("level", "DEBUG").upper()
+            self.log_retention_days = int(logging_config.get("retention_days", 30))
+            self.log_max_size_mb = int(logging_config.get("max_size_mb", 100))
+            self.log_clear_on_startup = bool(logging_config.get("clear_on_startup", True))
             
         except FileNotFoundError:
             raise RuntimeError(f"Configuration file {self._config_file} not found")
@@ -263,7 +266,10 @@ class Config:
                 "path": self.db_path
             },
             "logging": {
-                "level": self.log_level
+                "level": self.log_level,
+                "retention_days": self.log_retention_days,
+                "max_size_mb": self.log_max_size_mb,
+                "clear_on_startup": self.log_clear_on_startup
             }
         }
         

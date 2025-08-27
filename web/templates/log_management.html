@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Log Management - FunnyCommentator{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="h3 mb-3 font-weight-normal">
+                <i class="fas fa-file-alt"></i> Log Management
+            </h1>
+            
+            <!-- Log Status Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle"></i> Log File Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Configuration</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Retention Period:</strong> {{ log_status.retention_days }} days</li>
+                                <li><strong>Max File Size:</strong> {{ log_status.max_size_mb }} MB</li>
+                                <li><strong>Clear on Startup:</strong> 
+                                    {% if config.log_clear_on_startup %}
+                                        <span class="badge badge-success">Enabled</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">Disabled</span>
+                                    {% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Current Log Files</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>File</th>
+                                            <th>Size (MB)</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="log-files-table">
+                                        {% for filename, size in log_status.sizes.items() %}
+                                        <tr>
+                                            <td>{{ filename }}</td>
+                                            <td>{{ "%.2f"|format(size) }}</td>
+                                            <td>
+                                                {% if filename in log_status.files_needing_rotation %}
+                                                    <span class="badge badge-warning">Needs Rotation</span>
+                                                {% elif size > 50 %}
+                                                    <span class="badge badge-info">Large</span>
+                                                {% elif size > 0 %}
+                                                    <span class="badge badge-success">Normal</span>
+                                                {% else %}
+                                                    <span class="badge badge-secondary">Empty</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tools"></i> Log Management Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle"></i> Smart Cleanup</h6>
+                                <p class="mb-2">Rotates large log files and clears smaller ones based on the configured size threshold.</p>
+                                <button type="button" class="btn btn-primary" onclick="performCleanup(false)">
+                                    <i class="fas fa-broom"></i> Smart Cleanup
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-exclamation-triangle"></i> Force Clear All</h6>
+                                <p class="mb-2">Clears all log files completely, regardless of size. Use with caution!</p>
+                                <button type="button" class="btn btn-warning" onclick="performCleanup(true)">
+                                    <i class="fas fa-trash"></i> Force Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="card mb-4" id="results-card" style="display: none;">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-check-circle"></i> Cleanup Results
+                    </h5>
+                </div>
+                <div class="card-body" id="results-content">
+                    <!-- Results will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2">Processing log cleanup...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshLogStatus() {
+    fetch('/api/logs/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateLogTable(data.status);
+            } else {
+                console.error('Failed to refresh log status:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing log status:', error);
+        });
+}
+
+function updateLogTable(status) {
+    const tbody = document.getElementById('log-files-table');
+    tbody.innerHTML = '';
+    
+    for (const [filename, size] of Object.entries(status.sizes)) {
+        const row = document.createElement('tr');
+        
+        let statusBadge = '';
+        if (status.files_needing_rotation.includes(filename)) {
+            statusBadge = '<span class="badge badge-warning">Needs Rotation</span>';
+        } else if (size > 50) {
+            statusBadge = '<span class="badge badge-info">Large</span>';
+        } else if (size > 0) {
+            statusBadge = '<span class="badge badge-success">Normal</span>';
+        } else {
+            statusBadge = '<span class="badge badge-secondary">Empty</span>';
+        }
+        
+        row.innerHTML = `
+            <td>${filename}</td>
+            <td>${size.toFixed(2)}</td>
+            <td>${statusBadge}</td>
+        `;
+        
+        tbody.appendChild(row);
+    }
+}
+
+function performCleanup(forceClear) {
+    // Show loading modal
+    $('#loadingModal').modal('show');
+    
+    // Hide previous results
+    document.getElementById('results-card').style.display = 'none';
+    
+    const requestData = { force_clear: forceClear };
+    
+    fetch('/api/logs/cleanup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        $('#loadingModal').modal('hide');
+        
+        if (data.success) {
+            displayResults(data.results, forceClear);
+            // Refresh the log status
+            setTimeout(refreshLogStatus, 1000);
+        } else {
+            displayError(data.error);
+        }
+    })
+    .catch(error => {
+        $('#loadingModal').modal('hide');
+        displayError('Network error: ' + error.message);
+    });
+}
+
+function displayResults(results, forceClear) {
+    const resultsContent = document.getElementById('results-content');
+    const resultsCard = document.getElementById('results-card');
+    
+    let html = '<div class="alert alert-success"><h6>Cleanup Completed Successfully!</h6></div>';
+    
+    if (results.cleared_files.length > 0) {
+        html += '<h6><i class="fas fa-check"></i> Cleared Files:</h6>';
+        html += '<ul class="list-group list-group-flush mb-3">';
+        results.cleared_files.forEach(file => {
+            html += `<li class="list-group-item">${file}</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (results.rotated_files.length > 0) {
+        html += '<h6><i class="fas fa-redo"></i> Rotated Files:</h6>';
+        html += '<ul class="list-group list-group-flush mb-3">';
+        results.rotated_files.forEach(file => {
+            html += `<li class="list-group-item">${file}</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (results.errors.length > 0) {
+        html += '<div class="alert alert-warning"><h6><i class="fas fa-exclamation-triangle"></i> Errors:</h6>';
+        html += '<ul class="mb-0">';
+        results.errors.forEach(error => {
+            html += `<li>${error}</li>`;
+        });
+        html += '</ul></div>';
+    }
+    
+    if (results.cleared_files.length === 0 && results.rotated_files.length === 0 && results.errors.length === 0) {
+        html += '<div class="alert alert-info">No actions were needed.</div>';
+    }
+    
+    resultsContent.innerHTML = html;
+    resultsCard.style.display = 'block';
+}
+
+function displayError(error) {
+    const resultsContent = document.getElementById('results-content');
+    const resultsCard = document.getElementById('results-card');
+    
+    resultsContent.innerHTML = `
+        <div class="alert alert-danger">
+            <h6><i class="fas fa-exclamation-circle"></i> Error</h6>
+            <p class="mb-0">${error}</p>
+        </div>
+    `;
+    
+    resultsCard.style.display = 'block';
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshLogStatus, 30000);
+</script>
+{% endblock %}

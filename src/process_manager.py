@@ -35,7 +35,7 @@ class ProcessManager:
         self.app_name = "FunnyCommentator"
         self.script_path = Path(__file__).parent.parent / "run.py"
         self.pid_file = Path(__file__).parent.parent / "app.pid"
-        self.log_file = Path(__file__).parent.parent / "logs" / "process.log"
+        # Remove separate log file - use standard logging instead
         self.is_windows = platform.system().lower() == 'windows'
         
     def _is_our_process(self, process: psutil.Process) -> bool:
@@ -210,14 +210,11 @@ class ProcessManager:
                     'status': status
                 }
             
-            # Ensure logs directory exists
-            self.log_file.parent.mkdir(exist_ok=True)
-            
             # Start the process with platform-specific parameters
-            log_file_handle = open(self.log_file, 'a')
+            # Use DEVNULL for stdout/stderr since we use centralized logging
             startup_kwargs = {
-                'stdout': log_file_handle,
-                'stderr': subprocess.STDOUT,
+                'stdout': subprocess.DEVNULL,
+                'stderr': subprocess.DEVNULL,
                 'cwd': str(self.script_path.parent)
             }
             
@@ -228,14 +225,12 @@ class ProcessManager:
                 # Unix-specific: Use start_new_session
                 startup_kwargs['start_new_session'] = True
             
-            try:
-                process = subprocess.Popen(
-                    [sys.executable, str(self.script_path)],
-                    **startup_kwargs
-                )
-            finally:
-                # Close the log file handle after starting
-                log_file_handle.close()
+            process = subprocess.Popen(
+                [sys.executable, str(self.script_path)],
+                **startup_kwargs
+            )
+            
+            logging.info(f"Started {self.app_name} process with PID {process.pid}")
             
             # Write PID to file
             with open(self.pid_file, 'w') as f:
@@ -357,12 +352,16 @@ class ProcessManager:
             }
     
     def get_application_logs(self, lines: int = 50) -> str:
-        """Get recent application logs."""
+        """Get recent application logs from the main application.log file."""
         try:
-            if not self.log_file.exists():
-                return "No logs available"
+            # Read from the main application log file instead of process-specific log
+            logs_dir = Path(__file__).parent.parent / "logs"
+            application_log = logs_dir / "application.log"
             
-            with open(self.log_file, 'r') as f:
+            if not application_log.exists():
+                return "No application logs available"
+            
+            with open(application_log, 'r', encoding='utf-8') as f:
                 log_lines = f.readlines()
                 
             # Return last N lines
@@ -370,6 +369,7 @@ class ProcessManager:
             return ''.join(recent_lines)
             
         except Exception as e:
+            logging.error(f"Error reading application logs: {e}")
             return f"Error reading logs: {str(e)}"
     
     def format_uptime(self, uptime_seconds: int) -> str:

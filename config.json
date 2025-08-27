@@ -1,6 +1,9 @@
 {
     "logging": {
-        "level": "DEBUG"
+        "level": "DEBUG",
+        "retention_days": 30,
+        "max_size_mb": 100,
+        "clear_on_startup": true
     },
     "discord": {
         "channel_id_ai": "1396417772216651826",
@@ -48,7 +51,7 @@
         "ollama_start_cmd": "ollama serve",
         "input_token_size": 20000, 
         "min_output_tokens": 64,
-        "max_output_tokens": 8096,
+        "max_output_tokens": 8000,
         "safety_buffer": 48,
         "tokenizer_model": "gpt-3.5-turbo",
         "enable_reasoning": true,
@@ -65,8 +68,8 @@
         "warmup_command": "ListPlayers"
     },
     "scheduler": {
-        "logs_summary_hour": 13,
-        "logs_summary_minute": 20
+        "logs_summary_hour": 3,
+        "logs_summary_minute": 0
     },
     "database": {
         "path": "E:\\arkbot_memory.db"

@@ -912,6 +912,91 @@ class ConfigWebApp:
                     'timestamp': datetime.now().isoformat()
                 }), 500
         
+        # Log Management routes
+        @self.app.route('/logs')
+        def log_management():
+            """Log management page."""
+            config = self._load_config_safe()
+            if not config:
+                return redirect(url_for('index'))
+            
+            try:
+                # Import here to avoid circular imports
+                from src.log_manager import LogManager
+                log_manager = LogManager(
+                    retention_days=getattr(config, 'log_retention_days', 30),
+                    max_size_mb=getattr(config, 'log_max_size_mb', 100)
+                )
+                
+                log_status = {
+                    "sizes": log_manager.get_log_sizes(),
+                    "files_needing_rotation": log_manager.check_log_rotation_needed(),
+                    "retention_days": log_manager.retention_days,
+                    "max_size_mb": log_manager.max_size_mb
+                }
+                
+                return render_template('log_management.html', config=config, log_status=log_status)
+            except Exception as e:
+                flash(f'Error loading log management: {e}', 'error')
+                return redirect(url_for('dashboard'))
+        
+        @self.app.route('/api/logs/status')
+        def api_logs_status():
+            """API endpoint for log status."""
+            try:
+                from src.log_manager import LogManager
+                config = self._load_config_safe()
+                
+                log_manager = LogManager(
+                    retention_days=getattr(config, 'log_retention_days', 30),
+                    max_size_mb=getattr(config, 'log_max_size_mb', 100)
+                )
+                
+                return jsonify({
+                    'success': True,
+                    'status': {
+                        "sizes": log_manager.get_log_sizes(),
+                        "files_needing_rotation": log_manager.check_log_rotation_needed(),
+                        "retention_days": log_manager.retention_days,
+                        "max_size_mb": log_manager.max_size_mb
+                    },
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                }), 500
+        
+        @self.app.route('/api/logs/cleanup', methods=['POST'])
+        def api_logs_cleanup():
+            """API endpoint for manual log cleanup."""
+            try:
+                from src.log_manager import LogManager
+                config = self._load_config_safe()
+                
+                force_clear = request.json.get('force_clear', False) if request.json else False
+                
+                log_manager = LogManager(
+                    retention_days=getattr(config, 'log_retention_days', 30),
+                    max_size_mb=getattr(config, 'log_max_size_mb', 100)
+                )
+                
+                results = log_manager.manual_cleanup(force_clear)
+                
+                return jsonify({
+                    'success': True,
+                    'results': results,
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                }), 500
+        
         # IP Monitor routes
         @self.app.route('/ip_monitor')
         def ip_monitor():

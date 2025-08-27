@@ -7,13 +7,6 @@ Welcome to the FunnyCommentator documentation! This directory contains comprehen
 ### 📖 Complete Documentation
 - **[COMPLETE_DOCUMENTATION.md](COMPLETE_DOCUMENTATION.md)** - Comprehensive feature documentation, configuration guides, and technical details
 
-### 🌐 Web Interface
-- **[WEB_INTERFACE.md](WEB_INTERFACE.md)** - Detailed web interface documentation and usage guide
-
-### 🔒 Security & Enterprise Features
-- **[CREDENTIAL_SECURITY.md](CREDENTIAL_SECURITY.md)** - Multi-platform credential security implementation
-- **[ENTERPRISE_CREDENTIALS.md](ENTERPRISE_CREDENTIALS.md)** - Enterprise-grade credential management system
-
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -43,9 +36,7 @@ python run.py
 FunnyCommentator/
 ├── docs/                    # 📚 Documentation (you are here)
 │   ├── COMPLETE_DOCUMENTATION.md  # Complete feature documentation
-│   ├── WEB_INTERFACE.md           # Web interface guide
-│   ├── CREDENTIAL_SECURITY.md     # Security implementation
-│   └── ENTERPRISE_CREDENTIALS.md  # Enterprise features
+│   └── README.md                  # Documentation index and quick start
 ├── src/                     # 🔧 Core application source code
 │   ├── main.py                    # Application orchestrator
 │   ├── discord_manager.py         # Unified Discord integration
@@ -80,13 +71,10 @@ FunnyCommentator/
 
 ### For Users
 1. **[Main README](../README.md)** - Start here for basic setup and usage
-2. **[WEB_INTERFACE.md](WEB_INTERFACE.md)** - Web interface configuration and usage
-3. **[COMPLETE_DOCUMENTATION.md](COMPLETE_DOCUMENTATION.md)** - Comprehensive feature guide
+2. **[COMPLETE_DOCUMENTATION.md](COMPLETE_DOCUMENTATION.md)** - Comprehensive feature guide
 
 ### For Administrators
-1. **[CREDENTIAL_SECURITY.md](CREDENTIAL_SECURITY.md)** - Security implementation details
-2. **[ENTERPRISE_CREDENTIALS.md](ENTERPRISE_CREDENTIALS.md)** - Enterprise deployment guide
-3. **[COMPLETE_DOCUMENTATION.md](COMPLETE_DOCUMENTATION.md)** - Advanced configuration
+1. **[COMPLETE_DOCUMENTATION.md](COMPLETE_DOCUMENTATION.md)** - Advanced configuration and deployment
 
 ### For Developers
 1. **[COMPLETE_DOCUMENTATION.md](COMPLETE_DOCUMENTATION.md)** - Development guide and architecture
