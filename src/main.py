@@ -18,6 +18,9 @@ from src.discord_manager import DiscordManager
 from src.ollama_manager import OllamaManager
 from src.ip_monitor_manager import IPMonitorManager
 from src.log_manager import LogManager
+from src.vector_memory import VectorMemoryManager
+from src.recent_context import RecentContextManager
+from src.player_profiles import PlayerProfileManager
 
 class Application:
     """Main application class coordinating all components."""
@@ -77,6 +80,15 @@ class Application:
             self.db,
             self.discord
         )
+        
+        # Initialize semantic memory system
+        self.vector_memory = VectorMemoryManager(self.config)
+        
+        # Initialize enhanced context manager
+        self.recent_context = RecentContextManager(self.db)
+        
+        # Initialize player profiles manager  
+        self.player_profiles = PlayerProfileManager(self.db)
         
         self.stop_event = asyncio.Event()
         self.scheduler = AsyncIOScheduler()
@@ -153,6 +165,7 @@ class Application:
             # Collect logs from all servers in cluster
             all_lines = []
             cluster_context = []
+            all_players_in_cluster = []
             
             for server_name in server_names:
                 server_config = self.config.servers[server_name]
@@ -162,35 +175,119 @@ class Application:
                 lines = await asyncio.to_thread(rcon_client.fetch_logs)
                 
                 if lines:
+                    # Process logs for player profile updates
+                    self.player_profiles.process_logs_for_profiles(lines, server_name)
+                    
+                    # Extract players from this server's logs
+                    server_players = self.player_profiles.extract_players_from_logs(lines)
+                    all_players_in_cluster.extend(server_players)
+                    
                     all_lines.extend([f"[{server_name}] {line}" for line in lines])
                     cluster_context.append(server_config.get_context_prompt(self.config.ai_tone))
 
             if not all_lines:
                 logging.info(f"No logs to summarize for cluster {cluster_name}")
                 return
+            
+            # Get player context for enhanced AI responses
+            player_context = ""
+            if all_players_in_cluster:
+                # Remove duplicates while preserving order
+                unique_players = list(dict.fromkeys(all_players_in_cluster))
+                player_summaries = self.player_profiles.get_contextual_player_summaries(
+                    unique_players, 
+                    max_length=1000  # Slightly larger for cluster summaries
+                )
+                if player_summaries:
+                    player_context = f"\n\nPLAYER CONTEXT (for personalized commentary):\n{player_summaries}"
 
-            # Get previous cluster summaries for context (to avoid repetition)
-            cluster_summaries = self.db.get_cluster_summaries_up_to_token_limit(
-                cluster_name, 
-                self.config.input_token_size
+            # Create consolidated cluster context without duplication
+            # Role and general instructions (once at the top)
+            role_context = (
+                "You are an advisor and commentator for an ARK: Survival Evolved cluster.\n"
+                "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes. Swearing is allowed!\n"
+                "Sometimes players will use chat to ask you questions which you will receive in the logs. We will call you Ollama.\n"
+                "Remember: Respond in English only with a funny commentary about the server events.\n"
             )
+            
+            # Server information (consolidated, no role repetition)
+            servers_info = []
+            for server_name in server_names:
+                server_config = self.config.servers[server_name]
+                game_type = "PvE" if server_config.is_pve else "PvP"
+                servers_info.append(
+                    f"Server: {server_config.name} | Map: {server_config.map_name} | "
+                    f"Type: {game_type} | Tribe: {server_config.tribe_name} | "
+                    f"Max Dino Level: {server_config.max_wild_dino_level} | "
+                    f"Players: {', '.join(server_config.player_names)}"
+                )
+            
+            cluster_servers_context = f"Cluster '{cluster_name}' includes these servers:\n" + "\n".join(servers_info)
+
+            # Calculate base context without historical summaries to prevent overflow
+            base_context_without_history = (
+                role_context +
+                "\n" + cluster_servers_context +
+                "\n\nIMPORTANT: You MUST respond in English only. Create a funny, sarcastic commentary about these ARK server events.\n"
+            )
+            
+            base_context_tokens = self.ollama._estimate_prompt_tokens(base_context_without_history)
+            # Restore full context for Mistral - much better with historical context than DeepSeek-R1
+            available_for_history = self.config.input_token_size // 3  # Use 33% of context for history
+            
+            logging.debug(f"Context calculation: base_without_history={base_context_tokens}, "
+                         f"available_for_history={available_for_history}")
+            
+            # Use enhanced context manager for better conversation threading
+            contextual_summaries = self.recent_context.get_contextual_summaries(
+                cluster_name=cluster_name,
+                target_tokens=available_for_history
+            )
+            
+            # Get semantic memories if enabled
+            semantic_memories = []
+            if self.vector_memory.enabled:
+                logging.debug(f"Searching for semantic memories for cluster {cluster_name}")
+                semantic_memories = self.vector_memory.search_similar_memories(all_lines, cluster_name)
+                if semantic_memories:
+                    logging.info(f"Found {len(semantic_memories)} relevant semantic memories for cluster {cluster_name}")
             
             # Create history context for AI (not to be included in response)
             history_context = ""
-            if cluster_summaries:
+            if contextual_summaries or semantic_memories or player_context:
+                context_parts = []
+                
+                if contextual_summaries:
+                    context_parts.append("RECENT RESPONSES CONTEXT (do not repeat this content):\n" + 
+                                       "\n".join(contextual_summaries))
+                
+                if semantic_memories:
+                    context_parts.append("SIMILAR PAST EXPERIENCES (for inspiration, avoid direct repetition):\n" + 
+                                        "\n".join(semantic_memories))
+                
+                if player_context:
+                    context_parts.append(player_context)
+                
                 history_context = (
-                    "\n\nPREVIOUS RESPONSES CONTEXT (do not repeat this content):\n" +
-                    "\n".join(cluster_summaries) + 
-                    "\n\nPlease avoid repeating similar jokes or observations from the above previous responses."
+                    "\n\n" + "\n\n".join(context_parts) + 
+                    "\n\nPlease create fresh commentary that acknowledges player personalities while avoiding repetition from the above context."
                 )
             
-            logging.debug(f"Using {len(cluster_summaries)} previous summaries for context")
+            logging.debug(f"Using {len(contextual_summaries)} contextual summaries, {len(semantic_memories)} semantic memories, and {len(all_players_in_cluster)} player profiles for cluster context")
             
-            # Create cluster context
-            combined_context = (
-                f"This is a summary for the cluster '{cluster_name}' which includes the following servers:\n"
-                + "\n".join(cluster_context)
-                + f"\n{history_context}"
+            # Assemble the final prompt in optimal order: Role -> Servers -> History -> Current Events (LAST)
+            combined_context = role_context + "\n" + cluster_servers_context
+            
+            # Add historical context if available
+            if history_context:
+                combined_context += f"\n{history_context}"
+            
+            # Add current events AT THE END to prevent truncation
+            combined_context += (
+                "\n\n=== CURRENT SERVER EVENTS TO SUMMARIZE ===\n"
+                + "\n".join(all_lines)
+                + "\n=== END OF CURRENT EVENTS ===\n"
+                + "\n\nIMPORTANT: Focus your commentary on the CURRENT EVENTS above. Use any historical context only to avoid repetition, not as the main topic."
             )
             
             logging.info(f"Generating AI summary for cluster {cluster_name} with {len(all_lines)} total log lines")
@@ -206,6 +303,16 @@ class Application:
             # Save and send cluster summary
             logging.debug(f"Saving cluster summary to database for {cluster_name}")
             self.db.save_cluster_summary(cluster_name, cluster_summary)
+            
+            # Store in semantic memory if enabled
+            if self.vector_memory.enabled:
+                logging.debug(f"Storing cluster summary in semantic memory for {cluster_name}")
+                self.vector_memory.store_memory(
+                    cluster_name, 
+                    cluster_summary, 
+                    all_lines,
+                    {"type": "cluster_summary", "server_count": len(server_names)}
+                )
             
             cluster_header = f"=== {cluster_name} Cluster Summary ===\n"
             final_message = cluster_header + cluster_summary
@@ -246,24 +353,65 @@ class Application:
             # Prepend server context to the logs
             context = server_config.get_context_prompt(self.config.ai_tone)
             
-            # Get previous summaries for this server (for context to avoid repetition)
-            summaries = self.db.get_summaries_up_to_token_limit(
-                server_name, 
-                self.config.input_token_size
+            # Process logs for player profile updates
+            self.player_profiles.process_logs_for_profiles(lines, server_name)
+            
+            # Get player context for enhanced AI responses
+            players_in_logs = self.player_profiles.extract_players_from_logs(lines)
+            player_context = ""
+            if players_in_logs:
+                player_summaries = self.player_profiles.get_contextual_player_summaries(
+                    players_in_logs, 
+                    max_length=800
+                )
+                if player_summaries:
+                    player_context = f"\n\nPLAYER CONTEXT (for personalized commentary):\n{player_summaries}"
+            
+            # Use enhanced context manager for better conversation threading
+            contextual_summaries = self.recent_context.get_contextual_summaries(
+                server_name=server_name,
+                target_tokens=self.config.input_token_size
             )
+            
+            # Get semantic memories if enabled
+            semantic_memories = []
+            if self.vector_memory.enabled:
+                logging.debug(f"Searching for semantic memories for server {server_name}")
+                semantic_memories = self.vector_memory.search_similar_memories(lines, server_name)
+                if semantic_memories:
+                    logging.info(f"Found {len(semantic_memories)} relevant semantic memories for server {server_name}")
             
             # Create history context for AI (not to be included in response)
             history_context = ""
-            if summaries:
+            if contextual_summaries or semantic_memories or player_context:
+                context_parts = []
+                
+                if contextual_summaries:
+                    context_parts.append("RECENT RESPONSES CONTEXT (do not repeat this content):\n" + 
+                                       "\n".join(contextual_summaries))
+                
+                if semantic_memories:
+                    context_parts.append("SIMILAR PAST EXPERIENCES (for inspiration, avoid direct repetition):\n" + 
+                                        "\n".join(semantic_memories))
+                
+                if player_context:
+                    context_parts.append(player_context)
+                
                 history_context = (
-                    "\n\nPREVIOUS RESPONSES CONTEXT (do not repeat this content):\n" +
-                    "\n".join(summaries) + 
-                    "\n\nPlease avoid repeating similar jokes or observations from the above previous responses."
+                    "\n\n" + "\n\n".join(context_parts) + 
+                    "\n\nPlease create fresh commentary that acknowledges player personalities while avoiding repetition from the above context."
                 )
             
-            logging.debug(f"Using {len(summaries)} previous summaries for context for server {server_name}")
+            logging.debug(f"Using {len(contextual_summaries)} contextual summaries, {len(semantic_memories)} semantic memories, and {len(players_in_logs)} player profiles for context for server {server_name}")
             
-            final_context = f"{context}{history_context}\n"
+            # Assemble the final prompt in optimal order: Role -> Server Context -> History
+            # (Current events will be added by ollama_manager at the end)
+            final_context = context  # Server role and info
+            
+            # Add historical context if available  
+            if history_context:
+                final_context += history_context
+            
             logging.info(f"Generating AI summary for server {server_name} with {len(lines)} log lines")
             logging.debug(f"Context for server {server_name}: {len(final_context)} chars")
             
@@ -277,6 +425,16 @@ class Application:
             # Save and send the summary
             logging.debug(f"Saving summary to database for {server_name}")
             self.db.save_summary(server_name, summary)
+            
+            # Store in semantic memory if enabled
+            if self.vector_memory.enabled:
+                logging.debug(f"Storing server summary in semantic memory for {server_name}")
+                self.vector_memory.store_memory(
+                    server_name, 
+                    summary, 
+                    lines,
+                    {"type": "server_summary", "map_name": server_config.map_name}
+                )
             
             server_header = f"=== {server_name} ({server_config.map_name}) Summary ===\n"
             final_message = server_header + summary

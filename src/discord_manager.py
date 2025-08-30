@@ -99,9 +99,16 @@ class DiscordManager:
         """
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
         headers = {
-            "Authorization": f"Bot {self.token[:20]}...{self.token[-5:]}",  # Mask token in logs
+            "Authorization": f"Bot {self.token}",
             "Content-Type": "application/json"
         }
+        
+        # Log headers with masked token for security
+        masked_headers = {
+            "Authorization": f"Bot {self.token[:20]}...{self.token[-5:]}",
+            "Content-Type": "application/json"
+        }
+        logging.debug(f"Discord API headers: {masked_headers}")
         
         # Split long messages into chunks
         chunks = self.split_text_on_word_boundaries(content, 2000)

@@ -1,4 +1,6 @@
 {
+    "input_token_size": 32000,
+    "database_path": "E:\\arkbot_memory.db",
     "logging": {
         "level": "DEBUG",
         "retention_days": 30,
@@ -49,17 +51,24 @@
     ],
     "ai": {
         "ollama_start_cmd": "ollama serve",
-        "input_token_size": 20000, 
+        "input_token_size": 32000, 
         "min_output_tokens": 64,
         "max_output_tokens": 8000,
         "safety_buffer": 48,
         "tokenizer_model": "gpt-3.5-turbo",
-        "enable_reasoning": true,
+        "enable_reasoning": false,
         "timeout_seconds": 10800,
         "ollama_url": "http://localhost:11434/api/generate",
-        "ollama_model": "deepseek-r1:70b",
+        "ollama_model": "mistral",
         "startup_timeout_seconds": 11800,
-        "ai_tone": "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes. Swearing is allowed!"
+        "ai_tone": "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes. Swearing is allowed!",
+        "semantic_memory": {
+            "enabled": true,
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+            "max_memories_per_search": 5,
+            "memory_relevance_threshold": 0.5,
+            "embedding_provider": "local"
+        }
     },
     "rcon": {
         "timeout_seconds": 15,
@@ -68,8 +77,8 @@
         "warmup_command": "ListPlayers"
     },
     "scheduler": {
-        "logs_summary_hour": 3,
-        "logs_summary_minute": 0
+        "logs_summary_hour": 12,
+        "logs_summary_minute": 15
     },
     "database": {
         "path": "E:\\arkbot_memory.db"

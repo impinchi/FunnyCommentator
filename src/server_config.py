@@ -33,5 +33,6 @@ class ServerConfig:
             f"Active Tribe: {self.tribe_name}",
             f"Players: {', '.join(self.player_names)}",
             tone,
-            "Sometimes players will use chat to ask you questions which you will receive in the logs. We will call you Ollama."
+            "Sometimes players will use chat to ask you questions which you will receive in the logs. We will call you Ollama.",
+            "Remember: Respond in English only with a funny commentary about the server events."
         ])

@@ -7,6 +7,10 @@ requests>=2.25.0  # HTTP requests for Ollama API
 rcon>=2.3.0  # RCON client for game servers
 tiktoken>=0.5.0  # Token counting for AI prompts
 
+# Semantic memory dependencies (optional)
+sentence-transformers>=2.2.0  # Local embeddings for semantic memory
+numpy>=1.21.0  # Vector operations for similarity calculations
+
 # Web interface
 Flask>=2.3.0  # Web framework for configuration interface
 Werkzeug>=2.3.0  # WSGI utilities

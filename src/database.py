@@ -83,6 +83,18 @@ class DatabaseManager:
         enc = tiktoken.encoding_for_model(model)
         return len(enc.encode(text))
     
+    @staticmethod
+    def _decompress_text(compressed_data: bytes) -> str:
+        """Decompress text data from the database.
+        
+        Args:
+            compressed_data: Compressed bytes from database
+            
+        Returns:
+            Decompressed text string
+        """
+        return zlib.decompress(compressed_data).decode("utf-8")
+    
     def get_summaries_up_to_token_limit(self, server_name: str, token_limit: int) -> List[str]:
         """Retrieve summaries from the server's table up to the token limit.
         

@@ -14,7 +14,7 @@ import tiktoken
 
 class OllamaManager:
     def __init__(self, url: str, model: str, start_cmd: str, timeout: int, 
-                 startup_timeout: int = 300, input_token_size: int = 4096,
+                 startup_timeout: int = 300, input_token_size: int = 64000,
                  min_output_tokens: int = 64, max_output_tokens: int = 512,
                  safety_buffer: int = 48, tokenizer_model: str = "gpt-3.5-turbo",
                  enable_reasoning: bool = False):
@@ -79,10 +79,10 @@ class OllamaManager:
         return max(1, len(text) // 4)
 
     def _compute_num_predict(self, prompt: str) -> int:
-        """Calculate optimal num_predict based on available context space.
+        """Calculate num_predict based on available context space.
         
-        Uses dynamic leftover approach: allocate remaining context window space
-        to output generation while respecting min/max bounds and safety buffer.
+        Uses the available space after prompt and safety buffer, capped by max_output_tokens.
+        This ensures we never request more tokens than the context window can handle.
         
         Args:
             prompt: The full prompt text that will be sent
@@ -92,24 +92,21 @@ class OllamaManager:
         """
         prompt_tokens = self._estimate_prompt_tokens(prompt)
         
-        # Calculate remaining capacity after prompt and safety buffer
-        remaining = self.input_token_size - prompt_tokens - self.safety_buffer
+        # Calculate available space: total context - prompt - safety buffer
+        available_space = self.input_token_size - prompt_tokens - self.safety_buffer
         
-        if remaining < self.min_output_tokens:
-            # Fallback: use minimum but never exceed a reasonable fraction of context
-            candidate = max(8, min(self.min_output_tokens, self.input_token_size // 8))
-            logging.warning(f"Limited context space: prompt={prompt_tokens}, "
-                          f"remaining={remaining}, using fallback={candidate}")
-        else:
-            # Normal case: use remaining space up to max_output_tokens
-            candidate = min(remaining, self.max_output_tokens)
-            
-        # Ensure we never go below absolute minimum
-        result = max(self.min_output_tokens, candidate)
+        # Use available space but cap at max_output_tokens
+        result = min(available_space, self.max_output_tokens)
+        
+        # Ensure we have at least some reasonable minimum
+        if result < self.min_output_tokens:
+            logging.warning(f"Very limited output space: {result} tokens available, "
+                          f"prompt={prompt_tokens}, ctx={self.input_token_size}")
+            result = max(result, 100)  # At least 100 tokens or available space
         
         logging.debug(f"Token allocation: prompt={prompt_tokens}, "
                      f"ctx={self.input_token_size}, buffer={self.safety_buffer}, "
-                     f"num_predict={result}")
+                     f"available={available_space}, num_predict={result}")
         
         return result
 
@@ -125,10 +122,7 @@ class OllamaManager:
                     "model": self.model, 
                     "prompt": initial_prompt, 
                     "stream": False,
-                    "options": {
-                        "num_ctx": self.input_token_size,
-                        "num_predict": self._compute_num_predict(initial_prompt)
-                    }
+                    "options": {}  # Minimal options for startup check
                 },
                 timeout=self.startup_timeout
             )
@@ -163,10 +157,7 @@ class OllamaManager:
                             "model": self.model, 
                             "prompt": initial_prompt, 
                             "stream": False,
-                            "options": {
-                                "num_ctx": self.input_token_size,
-                                "num_predict": self._compute_num_predict(initial_prompt)
-                            }
+                            "options": {}  # Minimal options for startup check
                         },
                         timeout=self.startup_timeout/2
                     )
@@ -229,22 +220,29 @@ class OllamaManager:
             logging.info(f"Starting AI summary generation for {len(log_lines)} log lines")
             logging.debug(f"Using Ollama model: {self.model} with context window limited to {self.input_token_size} tokens")
             
-            full_prompt = context + "\n".join(log_lines)
-            prompt_tokens = self._estimate_tokens(full_prompt)
+            # Create final prompt with events at the end for optimal ordering
+            if log_lines:
+                events_section = (
+                    "\n=== CURRENT EVENTS TO SUMMARIZE ===\n" + 
+                    "\n".join(log_lines) + 
+                    "\n=== END OF CURRENT EVENTS ===\n" + 
+                    "\nIMPORTANT: Focus your commentary on the CURRENT EVENTS above. Use any historical context only to avoid repetition, not as the main topic."
+                )
+                full_prompt = context + events_section
+            else:
+                full_prompt = context
+                
+            prompt_tokens = self._estimate_prompt_tokens(full_prompt)
             num_predict = self._compute_num_predict(full_prompt)
             
             logging.debug(f"Prompt tokens: {prompt_tokens}, Max output tokens: {num_predict}")
             
-            # Enable thinking mode for supported models (like DeepSeek-R1)
-            # This will be ignored by models that don't support it
+            # Minimal options - let the model manage its own token allocation
             options = {
-                "num_ctx": self.input_token_size,
-                "num_predict": num_predict,
-                "use_mmap": True,  # Memory optimization
-                "num_thread": -1,  # Use all available threads
-                "temperature": 0.8,        # Good creativity
-                "tfs_z": 0.95,            # Remove unlikely tokens
-                "repeat_penalty": 1.15,    # Avoid repetitive jokes
+                # Only set essential parameters for DeepSeek-R1
+                "temperature": 0.6,        # DeepSeek-R1 default
+                "top_p": 0.95,            # DeepSeek-R1 default (instead of tfs_z)
+                "repeat_penalty": 1.1,     # Gentler penalty for DeepSeek-R1
             }
             
             # Add thinking mode if enabled in config
@@ -257,21 +255,53 @@ class OllamaManager:
             logging.info(f"Sending request to Ollama API at {self.url}")
             logging.debug(f"Request options: {options}")
             
+            # Prepare the request payload
+            request_payload = {
+                "model": self.model,
+                "prompt": full_prompt,
+                "stream": False,
+                "options": options
+            }
+            
+            # Log the full request details for debugging
+            logging.debug(f"Full request payload: model={request_payload['model']}, "
+                         f"stream={request_payload['stream']}, "
+                         f"prompt_length={len(request_payload['prompt'])} chars")
+            # logging.debug(f"Prompt preview (first 200 chars): {repr(full_prompt[:200])}")
+            logging.debug(f"Prompt : {repr(full_prompt)}")
+            logging.debug(f"Request payload options: {request_payload['options']}")
+            
             response = self.session.post(
                 self.url,
-                json={
-                    "model": self.model,
-                    "prompt": full_prompt,
-                    "stream": False,
-                    "options": options
-                },
+                json=request_payload,
                 timeout=self.timeout
             )
             
             logging.debug(f"Ollama API response status: {response.status_code}")
             response.raise_for_status()
+            raw_json = response.json()
+            logging.debug(f"Full Ollama response JSON keys: {list(raw_json.keys())}")
+            logging.debug(f"Raw response field: {repr(raw_json.get('response', 'MISSING'))}")
             
-            raw_response = response.json()["response"].strip()
+            # Critical diagnostic information
+            logging.debug(f"Response done: {raw_json.get('done', 'MISSING')}")
+            logging.debug(f"Response done_reason: {repr(raw_json.get('done_reason', 'MISSING'))}")
+            logging.debug(f"Prompt eval count: {raw_json.get('prompt_eval_count', 'MISSING')}")
+            logging.debug(f"Eval count (output tokens): {raw_json.get('eval_count', 'MISSING')}")
+            logging.debug(f"Total duration: {raw_json.get('total_duration', 'MISSING')} ns")
+            
+            raw_response = raw_json["response"].strip()
+            
+            # # Handle DeepSeek-R1 thinking tokens - extract content after </think>
+            # if "<think>" in raw_response and "</think>" in raw_response:
+            #     logging.debug("Detected thinking tokens in response, extracting final answer")
+            #     # Find the end of the thinking section
+            #     think_end = raw_response.find("</think>")
+            #     if think_end != -1:
+            #         # Extract everything after </think>
+            #         final_response = raw_response[think_end + len("</think>"):].strip()
+            #         logging.debug(f"Extracted final response after thinking: {repr(final_response[:100])}")
+            #         raw_response = final_response
             
             logging.info(f"Successfully generated AI summary - Response length: {len(raw_response)} chars")
             logging.debug(f"AI Response preview: {raw_response[:200]}{'...' if len(raw_response) > 200 else ''}")

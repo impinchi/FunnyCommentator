@@ -140,6 +140,14 @@ class Config:
             self.ollama_startup_timeout = int(ai.get("startup_timeout_seconds", 300))  # 5 minutes default
             self.ai_tone = ai.get("ai_tone", "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes.")
             
+            # Semantic Memory Configuration
+            semantic_config = ai.get("semantic_memory", {})
+            self.semantic_memory_enabled = semantic_config.get("enabled", False)
+            self.embedding_model = semantic_config.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")
+            self.max_memories_per_search = int(semantic_config.get("max_memories_per_search", 5))
+            self.memory_relevance_threshold = float(semantic_config.get("memory_relevance_threshold", 0.7))
+            self.embedding_provider = semantic_config.get("embedding_provider", "local")
+            
             # Server Configurations
             servers_data = config.get("servers", [])
             try:
