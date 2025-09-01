@@ -18,21 +18,34 @@ class ServerConfig:
     database_table: str  # Each server gets its own table for summaries
     log_file_path: Optional[str] = None  # Path to ARK log file for fallback
     
-    def get_context_prompt(self, ai_tone: str = None) -> str:
-        """Generate the server-specific context for AI prompts."""
+    def get_server_info(self) -> str:
+        """Get just the server information without role/instructions."""
         game_type = "PvE" if self.is_pve else "PvP"
-        default_tone = "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes."
-        tone = ai_tone if ai_tone else default_tone
-        
         return "\n".join([
-            f"You are an advisor and commentator for an ARK: Survival Evolved server.",
             f"Server Name: {self.name}",
             f"Map: {self.map_name}",
             f"Max wild dino level is {self.max_wild_dino_level}.",
             f"Game Type: {game_type}",
             f"Active Tribe: {self.tribe_name}",
-            f"Players: {', '.join(self.player_names)}",
+            f"Players: {', '.join(self.player_names)}"
+        ])
+
+    def get_role_instructions(self, ai_tone: str = None) -> str:
+        """Get just the role and instructions without server info."""
+        default_tone = "You are expected to be sarcastic, hilarious and witty while being insulting and rude with mistakes."
+        tone = ai_tone if ai_tone else default_tone
+        
+        return "\n".join([
+            "You are an advisor and commentator for an ARK: Survival Evolved server.",
             tone,
             "Sometimes players will use chat to ask you questions which you will receive in the logs. We will call you Ollama.",
             "Remember: Respond in English only with a funny commentary about the server events."
+        ])
+
+    def get_context_prompt(self, ai_tone: str = None) -> str:
+        """Generate the server-specific context for AI prompts."""
+        # Compose from the other methods to avoid duplication
+        return "\n".join([
+            self.get_role_instructions(ai_tone),
+            self.get_server_info()
         ])

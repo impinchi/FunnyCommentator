@@ -226,7 +226,7 @@ class OllamaManager:
                     "\n=== CURRENT EVENTS TO SUMMARIZE ===\n" + 
                     "\n".join(log_lines) + 
                     "\n=== END OF CURRENT EVENTS ===\n" + 
-                    "\nIMPORTANT: Focus your commentary on the CURRENT EVENTS above. Use any historical context only to avoid repetition, not as the main topic."
+                    "\nIMPORTANT: Focus your commentary on the CURRENT EVENTS above. Use any historical context only to avoid repetition, not as the main topic. And stop repeating the phrase 'but hey'."
                 )
                 full_prompt = context + events_section
             else:

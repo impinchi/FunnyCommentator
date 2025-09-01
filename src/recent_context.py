@@ -182,17 +182,24 @@ class RecentContextManager:
             self.logger.warning("No server_name or cluster_name provided for contextual summaries")
             return []
             
+        self.logger.debug(f"Getting contextual summaries for {'cluster' if is_cluster else 'server'}: {target_identifier}")
+        self.logger.debug(f"Parameters: token_limit={effective_token_limit}, include_conversation_flow={include_conversation_flow}, conversation_weight={conversation_weight}")
+            
         if not include_conversation_flow:
             # Fall back to standard token-limited summaries
+            self.logger.debug(f"Using standard token-limited summaries (no conversation flow)")
             if is_cluster:
                 summaries = self.db.get_cluster_summaries_up_to_token_limit(target_identifier, effective_token_limit)
             else:
                 summaries = self.db.get_summaries_up_to_token_limit(target_identifier, effective_token_limit)
+            self.logger.debug(f"Retrieved {len(summaries)} standard summaries for {target_identifier}")
             return summaries
         
         # Split token budget between conversation flow and historical context
         conversation_tokens = int(effective_token_limit * conversation_weight)
         historical_tokens = effective_token_limit - conversation_tokens
+        
+        self.logger.debug(f"Token budget split: conversation={conversation_tokens}, historical={historical_tokens}")
         
         # Get conversation thread (recent responses) - use appropriate method for server/cluster
         if is_cluster:
@@ -200,30 +207,47 @@ class RecentContextManager:
         else:
             conversation_thread = self.get_conversation_thread(target_identifier, max_responses=5)
         
+        self.logger.debug(f"Retrieved conversation thread with {len(conversation_thread)} responses")
+        
         conversation_summaries = []
         conversation_token_count = 0
         
-        for item in reversed(conversation_thread):  # Most recent first for token counting
+        for i, item in enumerate(reversed(conversation_thread)):  # Most recent first for token counting
             response = item["response"]
             tokens = self.db.count_tokens(response)
+            
+            self.logger.debug(f"Conversation item {i+1}: {tokens} tokens, preview: {response[:100]}{'...' if len(response) > 100 else ''}")
             
             if conversation_token_count + tokens <= conversation_tokens:
                 conversation_summaries.insert(0, response)  # Keep chronological order
                 conversation_token_count += tokens
+                self.logger.debug(f"Added conversation item {i+1} to context (total: {conversation_token_count} tokens)")
             else:
+                self.logger.debug(f"Skipped conversation item {i+1} - would exceed token limit")
                 break
         
         # Get additional historical context with remaining tokens - use appropriate method
+        self.logger.debug(f"Getting historical summaries with {historical_tokens} token limit")
         if is_cluster:
             historical_summaries = self.db.get_cluster_summaries_up_to_token_limit(target_identifier, historical_tokens)
         else:
             historical_summaries = self.db.get_summaries_up_to_token_limit(target_identifier, historical_tokens)
         
+        self.logger.debug(f"Retrieved {len(historical_summaries)} historical summaries")
+        
         # Remove any overlap between conversation and historical summaries
+        original_historical_count = len(historical_summaries)
         historical_summaries = [s for s in historical_summaries if s not in conversation_summaries]
+        overlap_removed = original_historical_count - len(historical_summaries)
+        
+        if overlap_removed > 0:
+            self.logger.debug(f"Removed {overlap_removed} overlapping summaries from historical context")
         
         # Combine: historical context first, then conversation flow
         all_summaries = historical_summaries + conversation_summaries
+        
+        self.logger.info(f"Contextual summaries for {target_identifier}: {len(historical_summaries)} historical + {len(conversation_summaries)} conversation = {len(all_summaries)} total")
+        self.logger.debug(f"Final token usage: conversation={conversation_token_count}/{conversation_tokens}")
         
         return all_summaries
     

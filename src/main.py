@@ -226,9 +226,7 @@ class Application:
 
             # Calculate base context without historical summaries to prevent overflow
             base_context_without_history = (
-                role_context +
-                "\n" + cluster_servers_context +
-                "\n\nIMPORTANT: You MUST respond in English only. Create a funny, sarcastic commentary about these ARK server events.\n"
+                role_context + "\n" + cluster_servers_context 
             )
             
             base_context_tokens = self.ollama._estimate_prompt_tokens(base_context_without_history)
@@ -248,9 +246,16 @@ class Application:
             semantic_memories = []
             if self.vector_memory.enabled:
                 logging.debug(f"Searching for semantic memories for cluster {cluster_name}")
+                logging.debug(f"Vector memory search input: {len(all_lines)} log lines from cluster {cluster_name}")
                 semantic_memories = self.vector_memory.search_similar_memories(all_lines, cluster_name)
                 if semantic_memories:
                     logging.info(f"Found {len(semantic_memories)} relevant semantic memories for cluster {cluster_name}")
+                    for i, memory in enumerate(semantic_memories, 1):
+                        logging.debug(f"Semantic memory {i}: {memory[:200]}{'...' if len(memory) > 200 else ''}")
+                else:
+                    logging.debug(f"No semantic memories found for cluster {cluster_name}")
+            else:
+                logging.debug(f"Vector memory disabled for cluster {cluster_name}")
             
             # Create history context for AI (not to be included in response)
             history_context = ""
@@ -258,37 +263,42 @@ class Application:
                 context_parts = []
                 
                 if contextual_summaries:
+                    logging.debug(f"Adding {len(contextual_summaries)} contextual summaries to cluster context")
+                    for i, summary in enumerate(contextual_summaries, 1):
+                        logging.debug(f"Contextual summary {i}: {summary[:150]}{'...' if len(summary) > 150 else ''}")
                     context_parts.append("RECENT RESPONSES CONTEXT (do not repeat this content):\n" + 
                                        "\n".join(contextual_summaries))
                 
                 if semantic_memories:
+                    logging.debug(f"Adding {len(semantic_memories)} semantic memories to cluster context")
                     context_parts.append("SIMILAR PAST EXPERIENCES (for inspiration, avoid direct repetition):\n" + 
                                         "\n".join(semantic_memories))
                 
                 if player_context:
+                    logging.debug(f"Adding player context to cluster context: {len(player_context)} chars")
                     context_parts.append(player_context)
                 
                 history_context = (
-                    "\n\n" + "\n\n".join(context_parts) + 
+                    "\n\n".join(context_parts) + 
                     "\n\nPlease create fresh commentary that acknowledges player personalities while avoiding repetition from the above context."
                 )
             
             logging.debug(f"Using {len(contextual_summaries)} contextual summaries, {len(semantic_memories)} semantic memories, and {len(all_players_in_cluster)} player profiles for cluster context")
+            logging.debug(f"Final history context length: {len(history_context)} chars")
             
-            # Assemble the final prompt in optimal order: Role -> Servers -> History -> Current Events (LAST)
-            combined_context = role_context + "\n" + cluster_servers_context
+            # Assemble the final prompt in optimal order: Historical Context -> Servers -> Role -> Current Events (last)
+            # (Current events will be added by ollama_manager at the end)
+            combined_context = ""
             
-            # Add historical context if available
+            # 1. Add historical context first if available
             if history_context:
-                combined_context += f"\n{history_context}"
+                combined_context += history_context + "\n\n"
             
-            # Add current events AT THE END to prevent truncation
-            combined_context += (
-                "\n\n=== CURRENT SERVER EVENTS TO SUMMARIZE ===\n"
-                + "\n".join(all_lines)
-                + "\n=== END OF CURRENT EVENTS ===\n"
-                + "\n\nIMPORTANT: Focus your commentary on the CURRENT EVENTS above. Use any historical context only to avoid repetition, not as the main topic."
-            )
+            # 2. Add server information
+            combined_context += cluster_servers_context + "\n\n"
+            
+            # 3. Add role and instructions last (before current events)
+            combined_context += role_context
             
             logging.info(f"Generating AI summary for cluster {cluster_name} with {len(all_lines)} total log lines")
             logging.debug(f"Context for cluster {cluster_name}: {len(combined_context)} chars")
@@ -377,9 +387,16 @@ class Application:
             semantic_memories = []
             if self.vector_memory.enabled:
                 logging.debug(f"Searching for semantic memories for server {server_name}")
+                logging.debug(f"Vector memory search input: {len(lines)} log lines from server {server_name}")
                 semantic_memories = self.vector_memory.search_similar_memories(lines, server_name)
                 if semantic_memories:
                     logging.info(f"Found {len(semantic_memories)} relevant semantic memories for server {server_name}")
+                    for i, memory in enumerate(semantic_memories, 1):
+                        logging.debug(f"Semantic memory {i}: {memory[:200]}{'...' if len(memory) > 200 else ''}")
+                else:
+                    logging.debug(f"No semantic memories found for server {server_name}")
+            else:
+                logging.debug(f"Vector memory disabled for server {server_name}")
             
             # Create history context for AI (not to be included in response)
             history_context = ""
@@ -387,14 +404,19 @@ class Application:
                 context_parts = []
                 
                 if contextual_summaries:
+                    logging.debug(f"Adding {len(contextual_summaries)} contextual summaries to server context")
+                    for i, summary in enumerate(contextual_summaries, 1):
+                        logging.debug(f"Contextual summary {i}: {summary[:150]}{'...' if len(summary) > 150 else ''}")
                     context_parts.append("RECENT RESPONSES CONTEXT (do not repeat this content):\n" + 
                                        "\n".join(contextual_summaries))
                 
                 if semantic_memories:
+                    logging.debug(f"Adding {len(semantic_memories)} semantic memories to server context")
                     context_parts.append("SIMILAR PAST EXPERIENCES (for inspiration, avoid direct repetition):\n" + 
                                         "\n".join(semantic_memories))
                 
                 if player_context:
+                    logging.debug(f"Adding player context to server context: {len(player_context)} chars")
                     context_parts.append(player_context)
                 
                 history_context = (
@@ -403,14 +425,21 @@ class Application:
                 )
             
             logging.debug(f"Using {len(contextual_summaries)} contextual summaries, {len(semantic_memories)} semantic memories, and {len(players_in_logs)} player profiles for context for server {server_name}")
+            logging.debug(f"Final history context length: {len(history_context)} chars")
             
-            # Assemble the final prompt in optimal order: Role -> Server Context -> History
+            # Assemble the final prompt in optimal order: Historical Context -> Server Info -> Role -> Current Events (last)
             # (Current events will be added by ollama_manager at the end)
-            final_context = context  # Server role and info
+            final_context = ""
             
-            # Add historical context if available  
+            # 1. Add historical context first if available  
             if history_context:
-                final_context += history_context
+                final_context += history_context + "\n\n"
+            
+            # 2. Add server information
+            final_context += server_config.get_server_info() + "\n\n"
+            
+            # 3. Add role and instructions
+            final_context += server_config.get_role_instructions(self.config.ai_tone)
             
             logging.info(f"Generating AI summary for server {server_name} with {len(lines)} log lines")
             logging.debug(f"Context for server {server_name}: {len(final_context)} chars")

@@ -77,8 +77,8 @@
         "warmup_command": "ListPlayers"
     },
     "scheduler": {
-        "logs_summary_hour": 12,
-        "logs_summary_minute": 15
+        "logs_summary_hour": 22,
+        "logs_summary_minute": 0
     },
     "database": {
         "path": "E:\\arkbot_memory.db"

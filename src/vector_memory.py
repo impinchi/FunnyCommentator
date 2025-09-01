@@ -123,11 +123,31 @@ class VectorMemoryManager:
             List of floats representing the embedding, or None if failed
         """
         if not self.enabled or not self.embedding_function:
+            logging.debug("Embedding creation skipped - system disabled or not initialized")
             return None
             
         try:
+            # Log the text being embedded (truncated for readability)
+            text_preview = text[:200] + "..." if len(text) > 200 else text
+            logging.debug(f"Creating embedding for text ({len(text)} chars): {text_preview}")
+            
+            # Create the embedding using the sentence transformer model
             embedding = self.embedding_function.encode(text)
-            return embedding.tolist()
+            embedding_list = embedding.tolist()
+            
+            # Log embedding statistics
+            import numpy as np
+            embedding_array = np.array(embedding_list)
+            logging.debug(f"Embedding created successfully:")
+            logging.debug(f"  Dimensions: {len(embedding_list)}")
+            logging.debug(f"  Mean value: {np.mean(embedding_array):.6f}")
+            logging.debug(f"  Std deviation: {np.std(embedding_array):.6f}")
+            logging.debug(f"  Min value: {np.min(embedding_array):.6f}")
+            logging.debug(f"  Max value: {np.max(embedding_array):.6f}")
+            logging.debug(f"  Vector magnitude: {np.linalg.norm(embedding_array):.6f}")
+            
+            return embedding_list
+            
         except Exception as e:
             logging.error(f"Failed to create embedding: {e}")
             return None
@@ -211,14 +231,19 @@ class VectorMemoryManager:
             List of relevant past response texts
         """
         if not self.enabled:
+            logging.debug(f"Vector memory disabled - no search performed for {server_name}")
             return []
             
         try:
             # Create embedding for current logs
             current_text = "\n".join(current_logs)
+            logging.debug(f"Creating embedding for {len(current_text)} chars of current log text for {server_name}")
             current_embedding = self._create_embedding(current_text)
             if current_embedding is None:
+                logging.warning(f"Failed to create embedding for current logs for {server_name}")
                 return []
+            
+            logging.debug(f"Successfully created embedding with {len(current_embedding)} dimensions for {server_name}")
             
             # Get all memories for this server
             conn = sqlite3.connect(self.memory_db_path)
@@ -235,16 +260,24 @@ class VectorMemoryManager:
             conn.close()
             
             if not memories:
-                logging.debug(f"No memories found for server {server_name}")
+                logging.debug(f"No memories found in database for server {server_name}")
                 return []
+            
+            logging.debug(f"Retrieved {len(memories)} stored memories from database for {server_name}")
             
             # Calculate similarities
             similar_memories = []
+            processed_count = 0
+            similarity_scores = []
             
             for response_text, embedding_json, timestamp in memories:
                 try:
                     stored_embedding = json.loads(embedding_json)
                     similarity = self._cosine_similarity(current_embedding, stored_embedding)
+                    similarity_scores.append(similarity)
+                    processed_count += 1
+                    
+                    logging.debug(f"Memory {processed_count}: similarity={similarity:.4f}, threshold={self.relevance_threshold}")
                     
                     if similarity >= self.relevance_threshold:
                         similar_memories.append({
@@ -252,10 +285,21 @@ class VectorMemoryManager:
                             "similarity": similarity,
                             "timestamp": timestamp
                         })
+                        logging.debug(f"Memory {processed_count} ACCEPTED (similarity {similarity:.4f} >= threshold {self.relevance_threshold})")
+                        logging.debug(f"Memory content preview: {response_text[:100]}{'...' if len(response_text) > 100 else ''}")
+                    else:
+                        logging.debug(f"Memory {processed_count} rejected (similarity {similarity:.4f} < threshold {self.relevance_threshold})")
                         
                 except Exception as e:
-                    logging.warning(f"Failed to process memory embedding: {e}")
+                    logging.warning(f"Failed to process memory embedding {processed_count}: {e}")
                     continue
+            
+            # Log similarity statistics
+            if similarity_scores:
+                avg_similarity = sum(similarity_scores) / len(similarity_scores)
+                max_similarity = max(similarity_scores)
+                min_similarity = min(similarity_scores)
+                logging.debug(f"Similarity stats for {server_name}: avg={avg_similarity:.4f}, max={max_similarity:.4f}, min={min_similarity:.4f}")
             
             # Sort by similarity and return top results
             similar_memories.sort(key=lambda x: x["similarity"], reverse=True)
@@ -263,19 +307,95 @@ class VectorMemoryManager:
             
             result = [memory["response"] for memory in top_memories]
             
-            logging.debug(f"Found {len(result)} similar memories for {server_name}")
+            logging.info(f"Vector search for {server_name}: {len(result)} similar memories found from {len(memories)} total memories (threshold: {self.relevance_threshold})")
+            if result:
+                for i, memory in enumerate(top_memories, 1):
+                    logging.debug(f"Selected memory {i}: similarity={memory['similarity']:.4f}, timestamp={memory['timestamp']}")
+                    logging.debug(f"Memory {i} content: {memory['response'][:150]}{'...' if len(memory['response']) > 150 else ''}")
+            
             return result
             
         except Exception as e:
-            logging.error(f"Failed to search semantic memories: {e}")
+            logging.error(f"Failed to search semantic memories for {server_name}: {e}")
             return []
+    
+    def explain_similarity_calculation(self, text1: str, text2: str) -> Dict[str, Any]:
+        """Explain how similarity is calculated between two texts (for debugging).
+        
+        Args:
+            text1: First text to compare
+            text2: Second text to compare
+            
+        Returns:
+            Dictionary with detailed similarity calculation explanation
+        """
+        if not self.enabled:
+            return {"error": "Vector memory system is disabled"}
+            
+        try:
+            # Create embeddings for both texts
+            embedding1 = self._create_embedding(text1)
+            embedding2 = self._create_embedding(text2)
+            
+            if embedding1 is None or embedding2 is None:
+                return {"error": "Failed to create embeddings"}
+            
+            import numpy as np
+            vec1 = np.array(embedding1)
+            vec2 = np.array(embedding2)
+            
+            # Calculate similarity components
+            dot_product = np.dot(vec1, vec2)
+            norm1 = np.linalg.norm(vec1)
+            norm2 = np.linalg.norm(vec2)
+            similarity = dot_product / (norm1 * norm2) if norm1 > 0 and norm2 > 0 else 0.0
+            
+            return {
+                "text1_preview": text1[:100] + "..." if len(text1) > 100 else text1,
+                "text2_preview": text2[:100] + "..." if len(text2) > 100 else text2,
+                "embedding_dimensions": len(embedding1),
+                "vector1_magnitude": float(norm1),
+                "vector2_magnitude": float(norm2),
+                "dot_product": float(dot_product),
+                "cosine_similarity": float(similarity),
+                "similarity_interpretation": self._interpret_similarity(similarity),
+                "passes_threshold": similarity >= self.relevance_threshold,
+                "current_threshold": self.relevance_threshold
+            }
+            
+        except Exception as e:
+            return {"error": f"Similarity calculation failed: {e}"}
+    
+    def _interpret_similarity(self, similarity: float) -> str:
+        """Interpret what a similarity score means.
+        
+        Args:
+            similarity: Cosine similarity score
+            
+        Returns:
+            Human-readable interpretation
+        """
+        if similarity >= 0.9:
+            return "Nearly identical semantic meaning"
+        elif similarity >= 0.8:
+            return "Very high semantic similarity"
+        elif similarity >= 0.7:
+            return "High semantic similarity"
+        elif similarity >= 0.6:
+            return "Moderate semantic similarity"
+        elif similarity >= 0.5:
+            return "Some semantic similarity"
+        elif similarity >= 0.3:
+            return "Low semantic similarity"
+        else:
+            return "Very low or no semantic similarity"
     
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """Calculate cosine similarity between two vectors.
         
         Args:
-            vec1: First vector
-            vec2: Second vector
+            vec1: First vector (current log embedding)
+            vec2: Second vector (stored memory embedding)
             
         Returns:
             Cosine similarity score between 0 and 1
@@ -286,14 +406,31 @@ class VectorMemoryManager:
             vec1 = np.array(vec1)
             vec2 = np.array(vec2)
             
+            # Calculate dot product (measures how much the vectors point in the same direction)
             dot_product = np.dot(vec1, vec2)
+            
+            # Calculate norms (magnitudes) of each vector
             norm1 = np.linalg.norm(vec1)
             norm2 = np.linalg.norm(vec2)
             
+            # Log detailed similarity calculation for debugging
+            logging.debug(f"Vector similarity calculation:")
+            logging.debug(f"  Vector 1 dimensions: {len(vec1)}, magnitude: {norm1:.6f}")
+            logging.debug(f"  Vector 2 dimensions: {len(vec2)}, magnitude: {norm2:.6f}")
+            logging.debug(f"  Dot product: {dot_product:.6f}")
+            
             if norm1 == 0 or norm2 == 0:
+                logging.debug(f"  Zero vector detected - similarity: 0.0")
                 return 0.0
+            
+            # Cosine similarity = dot_product / (norm1 * norm2)
+            # This normalizes the similarity to be between -1 and 1
+            # Since we're using text embeddings, we expect values between 0 and 1
+            similarity = dot_product / (norm1 * norm2)
+            
+            logging.debug(f"  Final cosine similarity: {similarity:.6f}")
                 
-            return dot_product / (norm1 * norm2)
+            return float(similarity)
             
         except ImportError:
             logging.warning("NumPy not available for similarity calculation")
